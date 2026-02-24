@@ -1,0 +1,9 @@
+Future plan
+
+npm install recharts
+
+npm install react-hot-toast
+
+npm install jwt-decode
+
+npm install dayjs
