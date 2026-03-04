@@ -290,7 +290,6 @@ const GuideForm = () => {
       </div>
 
       {/* Scoped styles to ensure clean UI */}
-      {/* Scoped styles to ensure clean UI */}
       <style>{`
         .ck-editor__editable_inline {
           min-height: 400px;

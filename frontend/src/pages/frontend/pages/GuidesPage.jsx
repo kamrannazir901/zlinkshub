@@ -18,7 +18,7 @@ const GuidesPage = () => {
     const loadGuides = async () => {
       try {
         setLoading(true);
-        const res = await fetchAllGuides();
+        const res = await fetchAllGuides(12);
         setGuides(res.data || res);
       } catch (err) {
         console.error("Failed to fetch guides:", err);

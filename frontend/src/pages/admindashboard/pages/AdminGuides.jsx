@@ -18,7 +18,7 @@ const AdminGuides = () => {
   const fetchGuides = async () => {
     try {
       setLoading(true);
-      const res = await fetchAllGuides();
+      const res = await fetchAllGuides(9);
       // Ensure we are setting the array correctly depending on your API response structure
       setGuides(Array.isArray(res.data) ? res.data : res.data.guides || []);
     } catch (err) {
