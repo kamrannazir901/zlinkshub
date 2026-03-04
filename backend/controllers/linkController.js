@@ -54,18 +54,18 @@ export const testAmazonConnection = async (req, res) => {
     getItemsRequest.partnerTag = "ahmad465-20"; // USA Tag
     getItemsRequest.itemIds = [extractedAsin];
     getItemsRequest.resources = [
-      "images.primary.small",
+      "images.primary.large",
       "itemInfo.title",
       "itemInfo.features",
+      "offersV2.listings.price",
+      "itemInfo.classifications",
     ];
 
     const response = await api.getItems(marketplace, getItemsRequest);
 
-    return res.status(200).json({
+    return res.json({
       success: true,
-      testingAsin: extractedAsin,
-      marketplace: marketplace,
-      productTitle: response.itemsResult.items[0].itemInfo.title.displayValue,
+      data: response.itemsResult?.items?.[0] || null,
     });
   } catch (err) {
     // Handle SDK error response
@@ -227,6 +227,7 @@ export const generateLink = async (req, res) => {
       "itemInfo.title",
       "itemInfo.features",
       "offersV2.listings.price",
+      "itemInfo.classifications",
     ];
 
     // --- DEBUG LOGS ---
@@ -274,6 +275,10 @@ export const generateLink = async (req, res) => {
         description:
           item.itemInfo.features?.displayValues?.join(". ") ||
           "Product details available on Amazon.",
+        category:
+          item.itemInfo?.classifications?.productGroup?.displayValue ||
+          item.itemInfo?.classifications?.binding?.displayValue ||
+          "General",
       },
     });
 
@@ -350,7 +355,8 @@ export const getPublicLink = async (req, res) => {
           image: link.productData?.image,
           price: link.productData?.price,
           asin: link.productData?.asin,
-          description: link.productData?.description, // Ensure this is sent!
+          description: link.productData?.description,
+          category: link.productData?.category,
         },
         createdAt: link.createdAt,
       },
@@ -367,19 +373,30 @@ export const getPublicLink = async (req, res) => {
 
 export const getAllPublicLinks = async (req, res) => {
   try {
-    // Fetch all links, sorted by newest first
+    // 1. Get the limit from the query string (e.g., /api/links?limit=8)
+    // Default to 8 if no limit is provided
+    let limit = parseInt(req.query.limit) || 8;
+
+    // 2. Safety: Ensure limit isn't negative or excessively high
+    if (limit <= 0) limit = 8;
+    if (limit > 100) limit = 100;
+
+    // 3. Fetch links using the dynamic limit
     const links = await Link.find()
       .select("productData marketplace createdAt")
       .sort({ createdAt: -1 })
-      .limit(8);
+      .limit(limit);
 
     res.status(200).json({
       success: true,
+      count: links.length, // Helpful for the frontend to know how many were returned
       data: links,
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error fetching product feed", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Error fetching product feed",
+      error: error.message,
+    });
   }
 };

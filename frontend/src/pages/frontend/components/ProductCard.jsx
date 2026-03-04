@@ -14,10 +14,10 @@ const ProductCard = ({ product }) => {
           className="w-full h-full object-contain p-8 transition-transform duration-700 group-hover:scale-110"
         />
 
-        {/* Marketplace Badge */}
+        {/* Category Badge */}
         <div className="absolute top-4 left-4">
-          <span className="bg-black text-white text-[8px] font-black px-2 py-1 rounded-md uppercase tracking-wider">
-            {marketplace?.replace("www.", "")}
+          <span className="bg-primary text-white text-[10px] px-2 py-1 rounded-md uppercase tracking-wider">
+            {productData?.category || "General"}
           </span>
         </div>
       </div>

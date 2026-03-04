@@ -2,7 +2,10 @@ import API from "./api";
 
 export const getPublicLink = (id) => API.get(`/links/product/${id}`);
 
-export const getAllPublicLinks = () => API.get("/links/products/feed");
+export const getAllPublicLinks = (limit = 8) =>
+  API.get("/links/products/feed", {
+    params: { limit },
+  });
 
 export const generateLink = (data) => API.post("/links/generate", data);
 

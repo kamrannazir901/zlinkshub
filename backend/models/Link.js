@@ -24,6 +24,11 @@ const LinkSchema = new mongoose.Schema({
     price: { type: String },
     asin: { type: String },
     description: { type: String },
+    category: {
+      type: String,
+      default: "General",
+      trim: true,
+    },
   },
   createdAt: {
     type: Date,

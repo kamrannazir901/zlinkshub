@@ -56,7 +56,7 @@ const Signup = () => {
           Sign Up
         </h2>
         <p className="text-gray text-center mb-6">
-          Create your Affilvio account and start earning commissions
+          Create your ZLinksHub account and start earning commissions
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

@@ -12,12 +12,20 @@ import FrontendLayout from "../pages/frontend/layouts/FrontendLayout";
 
 // Frontend Pages
 import Home from "../pages/frontend/pages/Home";
+import About from "../pages/frontend/pages/About";
 import Contact from "../pages/frontend/pages/Contact";
 import Login from "../pages/frontend/pages/Login";
 import Signup from "../pages/frontend/pages/Signup";
 import ForgotPassword from "../pages/frontend/pages/ForgotPassword";
+import ResetPassword from "../pages/frontend/pages/ResetPassword";
 import Disclaimer from "../pages/frontend/pages/Disclaimer";
 import ProductPage from "../pages/frontend/pages/ProductPage";
+import ProductsPage from "../pages/frontend/pages/ProductsPage";
+import GuidesPage from "../pages/frontend/pages/GuidesPage";
+import SingleGuidePage from "../pages/frontend/pages/SingleGuidePage";
+// New Legal Pages
+import PrivacyPolicy from "../pages/frontend/pages/PrivacyPolicy";
+import TermsOfService from "../pages/frontend/pages/TermsOfService";
 
 // Admin layout
 import AdminLayout from "../pages/admindashboard/layout/AdminLayout";
@@ -33,23 +41,41 @@ import TrackingTags from "../pages/admindashboard/pages/TrackingTags";
 import AddAPIAccount from "../pages/admindashboard/pages/AddAPIAccount";
 import AddTrackingTag from "../pages/admindashboard/pages/AddTrackingTag";
 import UserForm from "../pages/admindashboard/pages/UserForm";
-
+import AdminGuides from "../pages/admindashboard/pages/AdminGuides";
+import GuideForm from "../pages/admindashboard/pages/GuideForm";
 // User Dashboard Pages
 import UserDashboard from "../pages/userdashboard/pages/Dashboard";
+import ScrollToTop from "../components/ScrollToTop";
 
 const AppRoutes = () => {
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         {/* --- Public Routes --- */}
         <Route element={<FrontendLayout />}>
+          {/* Home is now the Index (Root) Page */}
           <Route path="/" element={<Home />} index />
-          <Route path="/contact" element={<Contact />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/about" element={<About />} />
+
+          {/* Auth Pages */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
+          <Route path="reset-password/:token" element={<ResetPassword />} />
+
+          {/* Content Pages */}
+          <Route path="/products" element={<ProductsPage />} />
+          <Route path="/guides" element={<GuidesPage />} />
+          <Route path="/guides/:slug" element={<SingleGuidePage />} />
+          <Route path="/contact" element={<Contact />} />
           <Route path="disclaimer" element={<Disclaimer />} />
           <Route path="product/:id" element={<ProductPage />} />
+
+          {/* Legal Pages */}
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
         </Route>
 
         {/* --- Protected User Routes --- */}
@@ -71,9 +97,14 @@ const AppRoutes = () => {
             <Route path="api-accounts/new" element={<AddAPIAccount />} />
             <Route path="tracking-tags" element={<TrackingTags />} />
             <Route path="tracking-tags/new" element={<AddTrackingTag />} />
+
+            <Route path="guides" element={<AdminGuides />} />
+            <Route path="guides/new" element={<GuideForm />} />
+            <Route path="guides/:id" element={<GuideForm />} />
           </Route>
         </Route>
 
+        {/* Redirect unknown routes to Home instead of Login */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

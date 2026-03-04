@@ -1,23 +1,22 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { getPublicLink } from "../../../services/linkService";
+import { ExternalLink, ArrowLeft } from "lucide-react";
 
 const ProductPage = () => {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showFullDesc, setShowFullDesc] = useState(false); // Toggle for description
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         setLoading(true);
         const res = await getPublicLink(id);
-        const productInfo = res.data.data;
-        if (productInfo) {
-          setData(productInfo);
-          document.title = productInfo.productData?.title || "Product Details";
+        if (res.data.data) {
+          setData(res.data.data);
+          document.title = res.data.data.productData?.title || "Product";
         } else {
           setError(true);
         }
@@ -30,101 +29,102 @@ const ProductPage = () => {
     fetchProduct();
   }, [id]);
 
-  if (loading)
+  if (loading || error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white italic text-gray-400 animate-pulse uppercase tracking-widest text-xs font-bold">
-        Loading Product...
+      <div className="min-h-screen flex items-center justify-center text-sm tracking-widest uppercase">
+        {loading ? "Syncing..." : "Product Unavailable"}
       </div>
     );
+  }
 
-  if (error || !data)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-center px-4">
-        <h1 className="text-xl font-black uppercase tracking-tighter">
-          Product Not Found
-        </h1>
-      </div>
-    );
+  const { productData, affiliateUrl, createdAt } = data;
 
-  const { productData, affiliateUrl, marketplace } = data;
+  const BuyButton = ({ className = "" }) => (
+    <a
+      href={affiliateUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`flex items-center justify-center gap-2 px-6 py-4 bg-black text-white text-sm font-bold rounded-lg hover:bg-zinc-800 transition-all uppercase tracking-widest border border-black box-border ${className}`}
+    >
+      <span className="truncate">Checkout on Amazon</span>
+      <ExternalLink size={14} className="shrink-0" />
+    </a>
+  );
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center py-6 md:py-12 px-4 font-sans">
-      <div className="max-w-4xl w-full bg-white rounded-4xl md:rounded-[2.5rem] shadow-xl overflow-hidden border border-gray-100">
-        <div className="grid grid-cols-1 md:grid-cols-2">
-          {/* IMAGE: Reduced height on mobile */}
-          <div className="bg-[#FBFBFB] p-6 md:p-12 flex items-center justify-center border-b md:border-b-0 md:border-r border-gray-50">
-            <div className="w-full flex justify-center">
-              <img
-                src={productData?.image}
-                alt={productData?.title}
-                className="w-auto h-55 md:h-87.5 object-contain transition-transform duration-700 hover:scale-105"
-              />
-            </div>
-          </div>
+    <div className="min-h-screen bg-white text-gray-900 font-sans">
+      <nav className="px-6 py-6 max-w-7xl mx-auto">
+        <Link
+          to="/products"
+          className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-black transition-colors"
+        >
+          <ArrowLeft size={16} /> BACK
+        </Link>
+      </nav>
 
-          {/* CONTENT */}
-          <div className="p-6 md:p-12 flex flex-col justify-center">
-            {/* BADGE */}
-            <div className="mb-4">
-              <span className="bg-black text-white text-[10px] px-2 py-1 rounded-md uppercase tracking-widest">
-                {marketplace?.replace("www.", "")}
-              </span>
+      <main className="max-w-7xl mx-auto px-6 pb-24">
+        {/* Main Product Section */}
+        <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-20">
+          {/* 1. TEXT CONTENT (First on all devices) */}
+          <div className="flex flex-col justify-center">
+            <div className="mb-2 text-xs text-white bg-primary/85 rounded-full inline-block w-fit px-2 py-1 uppercase tracking-widest font-normal">
+              {productData?.category || "General"}
             </div>
 
-            {/* TITLE: Slightly smaller for mobile */}
-            <h1 className="text-lg md:text-xl font-black text-black leading-tight mb-3">
+            <h1 className="text-xl md:text-2xl font-bold leading-tight mb-4">
               {productData?.title}
             </h1>
 
-            {/* PRICE */}
-            <div className="mb-6">
-              <p className="text-3xl md:text-4xl font-black text-primary tracking-tighter">
-                {productData?.price}
-              </p>
+            <div className="text-3xl font-bold mb-2 tracking-tighter">
+              {productData?.price}
             </div>
 
-            {/* DESCRIPTION: Collapsible logic */}
-            {productData?.description && (
-              <div className="mb-8 overflow-hidden">
-                <p
-                  className={`text-xs text-gray-600 leading-relaxed font-medium transition-all ${!showFullDesc ? "line-clamp-2" : ""}`}
-                >
-                  {productData.description}
-                </p>
-                <button
-                  onClick={() => setShowFullDesc(!showFullDesc)}
-                  className="mt-2 text-[10px] font-black uppercase text-gray-400 hover:text-black tracking-widest transition-colors"
-                >
-                  {showFullDesc ? "Show Less" : "See More"}
-                </button>
-              </div>
-            )}
+            <p className="text-[12px] text-gray-400 mb-6 italic font-normal">
+              * Prices and availability are subject to change on Amazon.
+            </p>
 
-            {/* ACTION BUTTON */}
-            <div className="space-y-3">
-              <a
-                href={affiliateUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center w-full py-4 bg-black text-white text-xs font-black rounded-xl hover:bg-zinc-800 active:scale-[0.97] transition-all uppercase tracking-[0.2em]"
-              >
-                Buy Now
-              </a>
-              <p className="text-center text-[8px] text-gray-400 font-bold uppercase tracking-widest">
-                Official Amazon Listing
-              </p>
+            {/* ACTION BUTTON (Before Image on Mobile) */}
+            <div className="mb-8 lg:mb-0">
+              <BuyButton className="w-full lg:w-fit lg:min-w-[280px]" />
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* FOOTER */}
-      <div className="fixed bottom-3 left-0 right-0 text-center pointer-events-none opacity-50">
-        <p className="text-[7px] text-gray-300 uppercase tracking-[0.3em] font-bold">
-          Partner Earnings Apply
-        </p>
-      </div>
+          {/* 2. IMAGE (Second on Mobile) */}
+          <div className="mt-4 lg:mt-0 bg-[#fcfcfc] border border-gray-50 rounded-2xl p-6 flex items-center justify-center">
+            <img
+              src={productData?.image}
+              alt="Product"
+              className="w-full h-auto max-h-[400px] object-contain mix-blend-multiply"
+            />
+          </div>
+        </div>
+
+        {/* 3. DESCRIPTION (Full Width Below) */}
+        <div className="mt-16 pt-12 border-t border-gray-100">
+          <div className="max-w-4xl">
+            <h3 className="text-sm uppercase tracking-widest mb-6 text-gray-400 font-normal">
+              Product Information
+            </h3>
+            <p className="text-sm md:text-base text-gray-600 leading-relaxed mb-10 font-normal">
+              {productData?.description}
+            </p>
+
+            {/* Secondary Button after description for mobile UX */}
+            <div className="lg:hidden mb-12">
+              <BuyButton className="w-full" />
+            </div>
+
+            <footer className="pt-8 border-t border-gray-50">
+              <p className="text-sm text-gray-400 leading-relaxed italic font-normal">
+                <strong>Affiliate Disclosure:</strong> As an Amazon Associate,
+                we earn from qualifying purchases. Prices and availability are
+                accurate as of {new Date(createdAt).toLocaleDateString()} and
+                are subject to change.
+              </p>
+            </footer>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

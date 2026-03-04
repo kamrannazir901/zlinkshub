@@ -3,13 +3,17 @@ import Sidebar from "../components/Sidebar";
 
 const AdminLayout = () => {
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Topbar Navigation */}
+    // Add overflow-x-hidden to the root container
+    <div className="min-h-screen bg-gray-50 flex flex-col overflow-x-hidden">
+      {/* Sidebar / Topbar */}
       <Sidebar />
 
-      {/* Main Content Area */}
-      <main className="pt-16 p-4 md:p-16">
-        <div className="max-w-7xl mx-auto">
+      {/* Main Content Area 
+         - Removed heavy md:p-16 to let the Dashboard handle its own spacing
+         - Added w-full to ensure it stays within bounds
+      */}
+      <main className="flex-1 w-full pt-16">
+        <div className="w-full">
           <Outlet />
         </div>
       </main>

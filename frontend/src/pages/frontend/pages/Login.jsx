@@ -45,7 +45,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-16">
+    <div className="flex items-center justify-center py-8">
       <div className="w-full max-w-md border border-gray/20 rounded-lg shadow-sm p-8">
         <h2 className="text-3xl font-bold text-black mb-2 text-center">
           Login
@@ -98,8 +98,19 @@ const Login = () => {
                 {errors.password.message}
               </p>
             )}
+            {/* ... inside the Password div ... */}
+            <div className="flex justify-end mt-1">
+              <Link
+                to="/forgot-password"
+                size="sm"
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </div>
 
+          {/* ... before the Submit Button ... */}
           {/* Submit Button */}
           <button
             type="submit"
