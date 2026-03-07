@@ -2,7 +2,54 @@ import pkg from "@amzn/creatorsapi-nodejs-sdk";
 import Link from "../models/Link.js";
 import TrackingTag from "../models/TrackingTag.js";
 
-const { ApiClient, DefaultApi, GetItemsRequestContent } = pkg;
+const {
+  ApiClient,
+  DefaultApi,
+  GetItemsRequestContent,
+  GetReportRequestContent,
+  ListReportsRequestContent,
+} = pkg;
+
+// Function to List Reports
+export const listReports = async (req, res) => {
+  try {
+    const apiClient = new ApiClient();
+    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
+    apiClient.credentialSecret =
+      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
+    apiClient.version = "2.1"; // Assuming North America
+
+    const api = new DefaultApi(apiClient);
+    const response = await api.listReports("www.amazon.com"); // Marketplace for US
+
+    res.json({ success: true, data: response });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Function to Get a Specific Report
+export const getReport = async (req, res) => {
+  try {
+    const { filename } = req.body; // Filename from Postman body
+
+    const apiClient = new ApiClient();
+    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
+    apiClient.credentialSecret =
+      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
+    apiClient.version = "2.1";
+
+    const api = new DefaultApi(apiClient);
+    const getReportRequest = new GetReportRequestContent();
+    getReportRequest.filename = filename; // Set the filename
+
+    const response = await api.getReport("www.amazon.com", getReportRequest);
+
+    res.json({ success: true, data: response });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
 
 export const testAmazonConnection = async (req, res) => {
   try {
@@ -329,48 +376,6 @@ export const deleteLink = async (req, res) => {
   }
 };
 
-export const getPublicLink = async (req, res) => {
-  try {
-    // .lean() makes the query faster for read-only public pages
-    const link = await Link.findById(req.params.id).lean();
-
-    if (!link) {
-      return res.status(404).json({
-        success: false,
-        message: "Link not found.",
-      });
-    }
-
-    // Return the entire document structure
-    res.json({
-      success: true,
-      data: {
-        _id: link._id,
-        userId: link.userId,
-        amazonUrl: link.amazonUrl,
-        affiliateUrl: link.affiliateUrl,
-        marketplace: link.marketplace,
-        productData: {
-          title: link.productData?.title,
-          image: link.productData?.image,
-          price: link.productData?.price,
-          asin: link.productData?.asin,
-          description: link.productData?.description,
-          category: link.productData?.category,
-        },
-        createdAt: link.createdAt,
-      },
-    });
-  } catch (error) {
-    if (error.kind === "ObjectId") {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid Link ID format" });
-    }
-    res.status(500).json({ success: false, message: "Server Error" });
-  }
-};
-
 export const getAllPublicLinks = async (req, res) => {
   try {
     // 1. Get the limit from the query string (e.g., /api/links?limit=8)
@@ -398,5 +403,71 @@ export const getAllPublicLinks = async (req, res) => {
       message: "Error fetching product feed",
       error: error.message,
     });
+  }
+};
+
+const isBot = (userAgent) => {
+  const bots = [
+    /facebookexternalhit/i,
+    /twitterbot/i,
+    /whatsapp/i,
+    /telegrambot/i,
+    /discordbot/i,
+    /linkedinbot/i,
+    /googlebot/i,
+  ];
+  return bots.some((bot) => bot.test(userAgent));
+};
+
+export const getPublicLink = async (req, res) => {
+  try {
+    const link = await Link.findById(req.params.id).lean();
+    if (!link) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Link not found." });
+    }
+
+    const userAgent = req.headers["user-agent"] || "";
+
+    // 1. If it's a BOT, serve the Meta Tags HTML for the preview
+    if (isBot(userAgent)) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta property="og:title" content="${link.productData.title}" />
+            <meta property="og:description" content="${link.productData.description.substring(0, 100)}..." />
+            <meta property="og:image" content="${link.productData.image}" />
+            <meta property="og:url" content="https://zlinkshub.com/product/${req.params.id}" />
+            <meta property="og:type" content="product" />
+          </head>
+          <body></body>
+        </html>
+      `);
+    }
+
+    // 2. If it's a HUMAN, return the JSON (existing behavior for React)
+    res.json({
+      success: true,
+      data: {
+        _id: link._id,
+        userId: link.userId,
+        amazonUrl: link.amazonUrl,
+        affiliateUrl: link.affiliateUrl,
+        marketplace: link.marketplace,
+        productData: {
+          title: link.productData?.title,
+          image: link.productData?.image,
+          price: link.productData?.price,
+          asin: link.productData?.asin,
+          description: link.productData?.description,
+          category: link.productData?.category,
+        },
+        createdAt: link.createdAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
