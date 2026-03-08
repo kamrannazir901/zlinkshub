@@ -29,8 +29,6 @@ const indexHTML = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
 app.use(cors());
 app.use(express.json());
 
-// Serve Vite static assets (JS, CSS, images)
-app.use(express.static(distPath, { index: false }));
 // // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/affiliate-accounts", affiliateAPIRoutes);
@@ -41,6 +39,9 @@ app.use("/api/guides", guideRoutes);
 
 // Test Route
 app.get("/", (req, res) => res.send("Affilvio Backend is Running"));
+
+// Serve Vite static assets after api routes (JS, CSS, images)
+app.use(express.static(distPath, { index: false }));
 
 // ─────────────────────────────────────────────
 // HELPER
