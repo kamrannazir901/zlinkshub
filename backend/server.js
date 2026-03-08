@@ -5,7 +5,7 @@ import connectDB from "./config/db.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-// Import routes
+
 import authRoutes from "./routes/auth.js";
 import affiliateAPIRoutes from "./routes/affiliateAPI.js";
 import trackingTagRoutes from "./routes/trackingTag.js";
@@ -13,6 +13,7 @@ import userRoutes from "./routes/userRoutes.js";
 import linkRoutes from "./routes/linkRoutes.js";
 import guideRoutes from "./routes/guideRoutes.js";
 import Link from "./models/Link.js";
+
 dotenv.config();
 connectDB();
 
@@ -22,26 +23,25 @@ const app = express();
 // ─────────────────────────────────────────────
 // VITE DIST SETUP
 // ─────────────────────────────────────────────
-const distPath = path.resolve(__dirname, "../frontend/dist"); // 👈 adjust if needed
+const distPath = path.resolve(__dirname, "../frontend/dist"); // 👈 your path
 const indexHTML = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
 
-// Middleware
+// ─────────────────────────────────────────────
+// MIDDLEWARE
+// ─────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 
-// // Routes
+// ✅ 1. Static assets FIRST (JS, CSS, images from dist)
+app.use(express.static(distPath, { index: false }));
+
+// ✅ 2. API routes SECOND — these start with /api so no conflict
 app.use("/api/auth", authRoutes);
 app.use("/api/affiliate-accounts", affiliateAPIRoutes);
 app.use("/api/tracking-tags", trackingTagRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/links", linkRoutes);
 app.use("/api/guides", guideRoutes);
-
-// Test Route
-app.get("/", (req, res) => res.send("Affilvio Backend is Running"));
-
-// Serve Vite static assets after api routes (JS, CSS, images)
-app.use(express.static(distPath, { index: false }));
 
 // ─────────────────────────────────────────────
 // HELPER
@@ -55,19 +55,20 @@ function escapeHTML(str) {
     .replace(/>/g, "&gt;");
 }
 
-// ─────────────────────────────────────────────
-// OG TAG INJECTION — Product pages
-// ─────────────────────────────────────────────
+// ✅ 3. OG injection for product pages
 app.get("/product/:id", async (req, res) => {
   try {
     const link = await Link.findById(req.params.id).lean();
 
     if (!link) {
-      return res.send(indexHTML); // React app handles the 404
+      return res.send(indexHTML);
     }
 
     const { productData } = link;
-    const pageUrl = `https://zlinkshub.com/product/${req.params.id}`;
+    const pageUrl =
+      process.env.NODE_ENV === "production"
+        ? `https://zlinkshub.com/product/${req.params.id}`
+        : `http://localhost:5000/product/${req.params.id}`;
 
     const ogTags = `
     <title>${escapeHTML(productData?.title)} | ZLinksHub</title>
@@ -91,13 +92,11 @@ app.get("/product/:id", async (req, res) => {
       return res.status(400).send("Invalid product ID");
     }
     console.error(err);
-    res.send(indexHTML); // fallback to React app
+    res.send(indexHTML);
   }
 });
 
-// ─────────────────────────────────────────────
-// CATCH-ALL — All other routes serve React app
-// ─────────────────────────────────────────────
+// ✅ 4. Catch-all LAST — serves React for all other frontend routes
 app.get("*", (req, res) => {
   res.send(indexHTML);
 });
