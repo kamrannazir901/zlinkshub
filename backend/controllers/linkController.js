@@ -376,6 +376,48 @@ export const deleteLink = async (req, res) => {
   }
 };
 
+export const getPublicLink = async (req, res) => {
+  try {
+    // .lean() makes the query faster for read-only public pages
+    const link = await Link.findById(req.params.id).lean();
+
+    if (!link) {
+      return res.status(404).json({
+        success: false,
+        message: "Link not found.",
+      });
+    }
+
+    // Return the entire document structure
+    res.json({
+      success: true,
+      data: {
+        _id: link._id,
+        userId: link.userId,
+        amazonUrl: link.amazonUrl,
+        affiliateUrl: link.affiliateUrl,
+        marketplace: link.marketplace,
+        productData: {
+          title: link.productData?.title,
+          image: link.productData?.image,
+          price: link.productData?.price,
+          asin: link.productData?.asin,
+          description: link.productData?.description,
+          category: link.productData?.category,
+        },
+        createdAt: link.createdAt,
+      },
+    });
+  } catch (error) {
+    if (error.kind === "ObjectId") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Link ID format" });
+    }
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+};
+
 export const getAllPublicLinks = async (req, res) => {
   try {
     // 1. Get the limit from the query string (e.g., /api/links?limit=8)
@@ -403,71 +445,5 @@ export const getAllPublicLinks = async (req, res) => {
       message: "Error fetching product feed",
       error: error.message,
     });
-  }
-};
-
-const isBot = (userAgent) => {
-  const bots = [
-    /facebookexternalhit/i,
-    /twitterbot/i,
-    /whatsapp/i,
-    /telegrambot/i,
-    /discordbot/i,
-    /linkedinbot/i,
-    /googlebot/i,
-  ];
-  return bots.some((bot) => bot.test(userAgent));
-};
-
-export const getPublicLink = async (req, res) => {
-  try {
-    const link = await Link.findById(req.params.id).lean();
-    if (!link) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Link not found." });
-    }
-
-    const userAgent = req.headers["user-agent"] || "";
-
-    // 1. If it's a BOT, serve the Meta Tags HTML for the preview
-    if (isBot(userAgent)) {
-      return res.send(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta property="og:title" content="${link.productData.title}" />
-            <meta property="og:description" content="${link.productData.description.substring(0, 100)}..." />
-            <meta property="og:image" content="${link.productData.image}" />
-            <meta property="og:url" content="https://zlinkshub.com/product/${req.params.id}" />
-            <meta property="og:type" content="product" />
-          </head>
-          <body></body>
-        </html>
-      `);
-    }
-
-    // 2. If it's a HUMAN, return the JSON (existing behavior for React)
-    res.json({
-      success: true,
-      data: {
-        _id: link._id,
-        userId: link.userId,
-        amazonUrl: link.amazonUrl,
-        affiliateUrl: link.affiliateUrl,
-        marketplace: link.marketplace,
-        productData: {
-          title: link.productData?.title,
-          image: link.productData?.image,
-          price: link.productData?.price,
-          asin: link.productData?.asin,
-          description: link.productData?.description,
-          category: link.productData?.category,
-        },
-        createdAt: link.createdAt,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Server Error" });
   }
 };
