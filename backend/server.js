@@ -97,7 +97,8 @@ app.get("/product/:id", async (req, res) => {
 });
 
 // ✅ 4. Catch-all LAST — serves React for all other frontend routes
-app.get("*", (req, res) => {
+// ✅ Replace with this
+app.get("/{*path}", (req, res) => {
   res.send(indexHTML);
 });
 
