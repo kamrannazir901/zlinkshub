@@ -87,15 +87,15 @@ const Dashboard = () => {
       {newlyGenerated && (
         <section className="mb-12 animate-in fade-in slide-in-from-top duration-500 space-y-4">
           {/* Branded Block */}
-          <div className="bg-primary/10 p-4 rounded-3xl border border-slate-200">
-            <label className="block text-sm tracking-wide mb-2 ml-1">
+          <div className="bg-gray-800 text-white p-4 rounded-3xl border border-slate-200">
+            <label className="block tracking-wide mb-2 ml-1">
               Branded Page Link
             </label>
             <div className="relative flex items-center">
               <input
                 readOnly
                 value={`${window.location.origin}/product/${newlyGenerated._id}`}
-                className="w-full bg-white p-4 pr-32 rounded-xl text-sm font-mono text-gray-600 outline-none border border-transparent focus:border-black transition-all"
+                className="w-full bg-white p-2 pr-32 rounded-xl text-sm font-mono text-gray-600 outline-none border border-transparent focus:border-black transition-all"
               />
               <button
                 onClick={() =>
@@ -116,20 +116,20 @@ const Dashboard = () => {
           </div>
 
           {/* Amazon Block */}
-          <div className="bg-purple-100 p-4 rounded-3xl border border-slate-200">
-            <label className="block text-sm tracking-wide mb-2 ml-1">
+          <div className="bg-gray-800 p-4 rounded-3xl border border-slate-200">
+            <label className="block text-white tracking-wide mb-2 ml-1">
               Direct Amazon Link
             </label>
             <div className="relative flex items-center">
               <input
                 readOnly
                 value={newlyGenerated.amazonUrl}
-                className="w-full bg-white p-4 pr-32 rounded-xl text-sm font-mono text-gray-600 outline-none border border-transparent focus:border-[#FF9900] transition-all"
+                className="w-full bg-white p-2 pr-32 rounded-xl text-sm font-mono text-gray-600 outline-none border border-transparent focus:border-[#FF9900] transition-all"
               />
               <button
                 onClick={() => handleCopy(newlyGenerated.amazonUrl, "amazon")}
                 className={`absolute right-2 px-6 py-2 rounded-lg text-xs font-bold uppercase transition-all text-white ${
-                  copiedId === "amazon" ? "bg-green-600" : "bg-purple-600"
+                  copiedId === "amazon" ? "bg-green-600" : "bg-orange-600"
                 }`}
               >
                 {copiedId === "amazon" ? "✓ Copied" : "Copy"}
