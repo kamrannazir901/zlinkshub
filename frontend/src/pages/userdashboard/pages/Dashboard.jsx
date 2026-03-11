@@ -123,11 +123,15 @@ const Dashboard = () => {
             <div className="relative flex items-center">
               <input
                 readOnly
-                value={newlyGenerated.amazonUrl}
+                // CHANGED: From newlyGenerated.amazonUrl to newlyGenerated.affiliateUrl
+                value={newlyGenerated.affiliateUrl}
                 className="w-full bg-white p-2 pr-32 rounded-xl text-sm font-mono text-gray-600 outline-none border border-transparent focus:border-[#FF9900] transition-all"
               />
               <button
-                onClick={() => handleCopy(newlyGenerated.amazonUrl, "amazon")}
+                // CHANGED: From newlyGenerated.amazonUrl to newlyGenerated.affiliateUrl
+                onClick={() =>
+                  handleCopy(newlyGenerated.affiliateUrl, "amazon")
+                }
                 className={`absolute right-2 px-6 py-2 rounded-lg text-xs font-bold uppercase transition-all text-white ${
                   copiedId === "amazon" ? "bg-green-600" : "bg-orange-600"
                 }`}
