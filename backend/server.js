@@ -12,6 +12,7 @@ import trackingTagRoutes from "./routes/trackingTag.js";
 import userRoutes from "./routes/userRoutes.js";
 import linkRoutes from "./routes/linkRoutes.js";
 import guideRoutes from "./routes/guideRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 import Link from "./models/Link.js";
 
 dotenv.config();
@@ -42,6 +43,7 @@ app.use("/api/tracking-tags", trackingTagRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/links", linkRoutes);
 app.use("/api/guides", guideRoutes);
+app.use("/api/reports", reportRoutes);
 
 // ─────────────────────────────────────────────
 // HELPER

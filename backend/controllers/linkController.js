@@ -10,47 +10,6 @@ const {
   ListReportsRequestContent,
 } = pkg;
 
-// Function to List Reports
-export const listReports = async (req, res) => {
-  try {
-    const apiClient = new ApiClient();
-    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
-    apiClient.credentialSecret =
-      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
-    apiClient.version = "2.1"; // Assuming North America
-
-    const api = new DefaultApi(apiClient);
-    const response = await api.listReports("www.amazon.com"); // Marketplace for US
-
-    res.json({ success: true, data: response });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-};
-
-// Function to Get a Specific Report
-export const getReport = async (req, res) => {
-  try {
-    const { filename } = req.body; // Filename from Postman body
-
-    const apiClient = new ApiClient();
-    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
-    apiClient.credentialSecret =
-      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
-    apiClient.version = "2.1";
-
-    const api = new DefaultApi(apiClient);
-    const getReportRequest = new GetReportRequestContent();
-    getReportRequest.filename = filename; // Set the filename
-
-    const response = await api.getReport("www.amazon.com", getReportRequest);
-
-    res.json({ success: true, data: response });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-};
-
 export const testAmazonConnection = async (req, res) => {
   try {
     // 1. URL to test (Note: I ensured this is a .com URL for your .com keys)

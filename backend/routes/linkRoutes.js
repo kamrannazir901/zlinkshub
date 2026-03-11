@@ -7,8 +7,6 @@ import {
   getUserLinks,
   deleteLink,
   getAllPublicLinks,
-  listReports,
-  getReport,
 } from "../controllers/linkController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -16,8 +14,6 @@ import { protect } from "../middleware/authMiddleware.js";
 router.get("/products/feed", getAllPublicLinks);
 router.get("/product/:id", getPublicLink);
 router.get("/test-connection", testAmazonConnection);
-router.get("/reports", listReports);
-router.post("/reports/download", getReport);
 
 // Protected routes (require login)
 router.use(protect);
