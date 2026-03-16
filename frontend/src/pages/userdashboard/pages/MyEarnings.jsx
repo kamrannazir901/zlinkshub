@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getMyEarnings } from "../../../services/reportService";
 import Pagination from "../../../components/Pagination";
+import { useSearchParams } from "react-router-dom";
 
 const MyEarnings = () => {
   const [sales, setSales] = useState([]);
@@ -10,6 +11,9 @@ const MyEarnings = () => {
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [userName, setUserName] = useState("My Earnings");
+  const [searchParams] = useSearchParams();
+  const userId = searchParams.get("userId");
 
   useEffect(() => {
     const now = new Date();
@@ -34,7 +38,7 @@ const MyEarnings = () => {
       firstDayOfPrevMonth.toISOString().split("T")[0],
       lastDayOfPrevMonth.toISOString().split("T")[0],
     );
-  }, []);
+  }, [userId]);
 
   const fetchData = async (
     pageNumber = 1,
@@ -49,7 +53,13 @@ const MyEarnings = () => {
         endDate: end,
         page: pageNumber,
         limit: 10,
+        userId,
       });
+      if (res.data.userName) {
+        setUserName(`${res.data.userName}'s Earnings`);
+      } else {
+        setUserName("My Earnings");
+      }
       setSales(res.data.reports || []);
       setSummary(res.data.summary || 0);
       setTotalPages(res.data.totalPages || 1);
@@ -64,11 +74,13 @@ const MyEarnings = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-        My Earnings
+      <h1 className="text-xl md:text-3xl font-bold text-gray-900 mb-2">
+        {userName}
       </h1>
       <p className="text-sm text-gray-500 mb-8">
-        View your sales and ad fees here.
+        View your sales and ad fees here. We update these reports once a month.
+        To see reports for a different time, pick your start and end dates
+        below, then click 'Filter Results'.
       </p>
 
       {/* Grid: Filter + Summary */}
@@ -133,7 +145,7 @@ const MyEarnings = () => {
                     {new Date(s.dateShipped).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-pink-600">
-                    ${(s.adFees || 0).toFixed(2)}
+                    {(s.adFees || 0).toFixed(2)}
                   </td>
                   <td className="px-6 py-4 font-mono">{s.asin}</td>
                   <td className="px-6 py-4 font-mono">{s.trackingId}</td>

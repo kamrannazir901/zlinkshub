@@ -163,7 +163,7 @@ const ReportsPage = () => {
                       {new Date(s.dateShipped).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-pink-600">
-                      ${(s.adFees || 0).toFixed(2)}
+                      {(s.adFees || 0).toFixed(2)}
                     </td>
                   </tr>
                 ))

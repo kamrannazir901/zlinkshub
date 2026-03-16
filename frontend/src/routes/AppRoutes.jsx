@@ -105,6 +105,7 @@ const AppRoutes = () => {
             <Route path="guides/:id" element={<GuideForm />} />
 
             <Route path="reports" element={<ReportsPage />} />
+            <Route path="reports/user-earnings" element={<MyEarnings />} />
           </Route>
         </Route>
 

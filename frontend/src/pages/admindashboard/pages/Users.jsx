@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { getUsers, deleteUser } from "../../../services/userService";
 import { Link } from "react-router-dom";
 import Pagination from "../../../components/Pagination";
-import { Search } from "lucide-react";
+import { Search, BarChart3, FileText } from "lucide-react";
 
 const Users = () => {
   const [users, setUsers] = useState([]);
@@ -139,18 +139,32 @@ const Users = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Link
-                        to={`/admin/users/${user._id}`}
-                        className="text-black hover:text-primary transition-colors font-semibold"
-                      >
-                        Edit
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(user._id)}
-                        className="text-primary hover:opacity-70 transition-colors ml-4 font-semibold"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex items-center justify-end gap-4">
+                        {/* Earnings Link */}
+                        <Link
+                          to={`/admin/reports/user-earnings?userId=${user._id}`}
+                          className="text-gray-400 hover:text-primary transition-colors flex items-center"
+                          title="View Earnings"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Link>
+
+                        {/* Edit Link */}
+                        <Link
+                          to={`/admin/users/${user._id}`}
+                          className="text-black hover:text-primary transition-colors font-semibold"
+                        >
+                          Edit
+                        </Link>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDelete(user._id)}
+                          className="text-primary hover:opacity-70 transition-colors font-semibold"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

@@ -2,6 +2,7 @@ import fs from "fs";
 import { parse } from "csv-parse";
 import SaleDetail from "../models/SaleDetail.js";
 import TrackingTag from "../models/TrackingTag.js";
+import User from "../models/User.js";
 import mongoose from "mongoose";
 
 export const uploadEarningsCSV = async (req, res) => {
@@ -218,7 +219,18 @@ export const clearEarnings = async (req, res) => {
 
 export const getUserReports = async (req, res) => {
   try {
-    let { startDate, endDate, page = 1, limit = 10 } = req.query;
+    let { startDate, userId, endDate, page = 1, limit = 10 } = req.query;
+
+    let targetUserId = req.user._id;
+    if (
+      req.user.role === "admin" &&
+      userId &&
+      mongoose.Types.ObjectId.isValid(userId)
+    ) {
+      targetUserId = new mongoose.Types.ObjectId(userId);
+    }
+
+    const targetUserName = await User.findById(targetUserId).select("name");
 
     // 1. Default Date Handler (Last Month)
     if (!startDate || !endDate) {
@@ -246,24 +258,19 @@ export const getUserReports = async (req, res) => {
     end.setHours(23, 59, 59, 999); // Ensure full day coverage
 
     // 2. Find tags associated with this user
-    const userTags = await TrackingTag.find({ user: req.user._id }).select(
+    const userTags = await TrackingTag.find({ user: targetUserId }).select(
       "_id tag",
     );
     const tagIds = userTags.map((t) => t._id);
 
-    // DEBUG LOGS
-    console.log(`--- User Report Debug [User: ${req.user._id}] ---`);
-    console.log("Found User Tag IDs:", JSON.stringify(tagIds));
-    console.log("Found User Tag Names:", userTags.map((t) => t.tag).join(", "));
-
     if (tagIds.length === 0) {
-      console.log("Result: No tags found for this user.");
       return res.json({
         reports: [],
         totalDocs: 0,
         page: 1,
         totalPages: 0,
         summary: 0,
+        userName: targetUserName ? targetUserName.name : req.user.name,
       });
     }
 
@@ -272,8 +279,6 @@ export const getUserReports = async (req, res) => {
       trackingTag: { $in: tagIds },
       dateShipped: { $gte: start, $lte: end },
     };
-
-    console.log("Executing Query:", JSON.stringify(query));
 
     // 4. Aggregation: Sum ad fees
     const summary = await SaleDetail.aggregate([
@@ -305,18 +310,13 @@ export const getUserReports = async (req, res) => {
 
     const result = await SaleDetail.paginate(query, options);
 
-    console.log(
-      `Summary Total: $${summary.length > 0 ? summary[0].totalAdFees : 0}`,
-    );
-    console.log(`Table Rows Found: ${result.docs.length}`);
-    console.log("---------------------------------------");
-
     res.json({
       reports: result.docs,
       totalDocs: result.totalDocs,
       page: result.page,
       totalPages: result.totalPages,
       summary: summary.length > 0 ? summary[0].totalAdFees : 0,
+      userName: targetUserName ? targetUserName.name : req.user.name,
     });
   } catch (error) {
     console.error("Report Controller Error:", error);
