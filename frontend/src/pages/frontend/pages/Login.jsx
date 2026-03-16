@@ -120,13 +120,6 @@ const Login = () => {
             {loading ? "Logging in..." : "Login"}
           </button>
         </form>
-
-        <p className="text-center text-sm text-gray mt-6">
-          Don’t have an account?{" "}
-          <Link to="/signup" className="text-primary hover:underline">
-            Sign up
-          </Link>
-        </p>
       </div>
     </div>
   );

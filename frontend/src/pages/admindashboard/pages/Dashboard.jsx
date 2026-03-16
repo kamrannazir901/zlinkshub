@@ -10,9 +10,9 @@ import {
   Plus,
   Activity,
   Zap,
-  Database,
   AlertCircle,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -74,10 +74,10 @@ const Dashboard = () => {
         </div>
         <div className="flex gap-3">
           <Link
-            to="/admin/guides/new"
+            to="/admin/users/new"
             className="px-6 py-3 bg-white border-2 border-black text-black rounded-xl font-semibold text-[15px] hover:bg-black hover:text-white transition-all flex items-center gap-2"
           >
-            <Plus size={18} /> New Guide
+            <Plus size={18} /> New User
           </Link>
           <Link
             to="/admin/tracking-tags/new"
@@ -126,14 +126,11 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-slate-50 border-2 border-slate-200 rounded-3xl overflow-hidden flex flex-col">
           <div className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Database className="text-slate-400" size={20} />
+              <AlertTriangle className="text-slate-400" size={20} />
               <h3 className="text-[15px] font-bold text-black uppercase tracking-wider">
-                Infrastructure Status
+                Pending Actions
               </h3>
             </div>
-            <span className="text-[12px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase">
-              All Systems Nominal
-            </span>
           </div>
 
           <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -182,9 +179,12 @@ const Dashboard = () => {
               Navigation
             </h3>
             <div className="space-y-3">
-              <QuickAction to="/admin/guides" label="Manage Education" />
-              <QuickAction to="/admin/tracking-tags" label="Tag Assignments" />
-              <QuickAction to="/admin/users" label="Creator Registry" />
+              <QuickAction to="/admin/users" label="Manage Users" />
+              <QuickAction to="/admin/tracking-tags" label="Manage Tags" />
+              <QuickAction
+                to="/admin/api-accounts"
+                label="Manage Api Accounts"
+              />
             </div>
           </div>
         </div>

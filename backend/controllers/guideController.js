@@ -29,17 +29,38 @@ export const createGuide = async (req, res) => {
 // READ ALL
 export const getAllGuides = async (req, res) => {
   try {
-    // Get limit from query params (e.g., /guides?limit=3)
-    const limit = parseInt(req.query.limit) || 0;
+    const { page = 1, limit = 10, search = "" } = req.query;
 
-    const guides = await Guide.find().sort({ createdAt: -1 }).limit(limit); // If limit is 0, Mongoose returns all documents
+    // Search by title or category
+    const query = search
+      ? {
+          $or: [
+            { title: { $regex: search, $options: "i" } },
+            { category: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
 
-    res.json(guides);
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      lean: true,
+    };
+
+    const result = await Guide.paginate(query, options);
+
+    res.json({
+      guides: result.docs,
+      totalDocs: result.totalDocs,
+      page: result.page,
+      totalPages: result.totalPages,
+    });
   } catch (error) {
+    console.error("Guide Fetch Error:", error);
     res.status(500).json({ message: "Error fetching guides" });
   }
 };
-
 // READ ONE BY SLUG (Public View)
 export const getGuideBySlug = async (req, res) => {
   try {

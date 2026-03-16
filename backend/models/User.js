@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-
+import mongoosePaginate from "mongoose-paginate-v2";
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -40,4 +40,5 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+userSchema.plugin(mongoosePaginate);
 export default mongoose.model("User", userSchema);

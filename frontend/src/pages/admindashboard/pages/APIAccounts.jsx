@@ -1,19 +1,30 @@
 import { useEffect, useState } from "react";
 import {
-  getAllAPIAccounts,
+  getAPIAccountsPaginated,
   deleteAPIAccount,
 } from "../../../services/affiliateService";
 import { Link } from "react-router-dom";
+import Pagination from "../../../components/Pagination";
+import { Search } from "lucide-react";
 
 const APIAccounts = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchAccounts = async () => {
+  // Separation of concerns
+  const [search, setSearch] = useState("");
+  const [activeSearch, setActiveSearch] = useState("");
+
+  const fetchAccounts = async (pageNumber, searchTerm) => {
     try {
       setLoading(true);
-      const res = await getAllAPIAccounts();
-      setAccounts(res.data);
+      // Ensure your service uses the params: page, limit, search
+      const res = await getAPIAccountsPaginated(pageNumber, 10, searchTerm);
+      setAccounts(res.data.accounts || []);
+      setTotalPages(res.data.totalPages || 1);
+      setPage(res.data.page || 1);
     } catch (err) {
       console.error("Failed to fetch API accounts:", err);
     } finally {
@@ -21,9 +32,18 @@ const APIAccounts = () => {
     }
   };
 
+  const handleSearch = () => {
+    setActiveSearch(search);
+    setPage(1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleSearch();
+  };
+
   useEffect(() => {
-    fetchAccounts();
-  }, []);
+    fetchAccounts(page, activeSearch);
+  }, [page, activeSearch]);
 
   const handleDelete = async (id) => {
     if (
@@ -33,7 +53,7 @@ const APIAccounts = () => {
     ) {
       try {
         await deleteAPIAccount(id);
-        setAccounts(accounts.filter((acc) => acc._id !== id));
+        fetchAccounts(page, activeSearch);
       } catch (err) {
         alert("Failed to delete account");
       }
@@ -58,7 +78,27 @@ const APIAccounts = () => {
         </Link>
       </div>
 
-      {/* Responsive Table */}
+      {/* Search Bar */}
+      <div className="mb-4">
+        <div className="relative w-full sm:w-60">
+          <div
+            className="absolute inset-y-0 left-0 pl-3 flex items-center cursor-pointer hover:text-primary transition-colors"
+            onClick={handleSearch}
+          >
+            <Search className="h-3.5 w-3.5 text-gray" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by app name or app id..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="block w-full pl-9 pr-3 py-1.5 border border-gray/20 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
       <div className="bg-white rounded-lg border border-gray/20 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray/10">
@@ -98,7 +138,7 @@ const APIAccounts = () => {
                       <div className="text-sm font-medium text-black">
                         {acc.appName}
                       </div>
-                      <div className="text-xs text-gray/70 truncate max-w-37.5">
+                      <div className="text-xs text-gray/70 truncate max-w-[150px]">
                         {acc.credentialId}
                       </div>
                     </td>
@@ -136,6 +176,11 @@ const APIAccounts = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={(newPage) => setPage(newPage)}
+        />
       </div>
     </div>
   );

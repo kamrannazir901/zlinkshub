@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongoosePaginate from "mongoose-paginate-v2";
 
 const trackingTagSchema = new mongoose.Schema(
   {
@@ -21,4 +22,5 @@ const trackingTagSchema = new mongoose.Schema(
 // Fixed the reference name here to match the variable above
 trackingTagSchema.index({ user: 1, marketplace: 1 });
 
+trackingTagSchema.plugin(mongoosePaginate);
 export default mongoose.model("TrackingTag", trackingTagSchema);

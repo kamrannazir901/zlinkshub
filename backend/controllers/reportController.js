@@ -1,104 +1,325 @@
-import pkg from "@amzn/creatorsapi-nodejs-sdk";
-import Link from "../models/Link.js";
+import fs from "fs";
+import { parse } from "csv-parse";
+import SaleDetail from "../models/SaleDetail.js";
 import TrackingTag from "../models/TrackingTag.js";
+import mongoose from "mongoose";
 
-const {
-  ApiClient,
-  DefaultApi,
-  GetItemsRequestContent,
-  GetReportRequestContent,
-  ListReportsRequestContent,
-} = pkg;
+export const uploadEarningsCSV = async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-export const createReport = async (req, res) => {
+  const { apiAccountId, reportStartDate, reportEndDate, conversionRate } =
+    req.body;
+  const rate = parseFloat(conversionRate) || 1;
+  const results = [];
+  const trackingIdsFound = new Set();
+
+  const parser = fs.createReadStream(req.file.path).pipe(
+    parse({
+      skip_empty_lines: true,
+      relax_column_count: true,
+      relax_quotes: true,
+      from_line: 3, // Skips header and metadata
+    }),
+  );
+
+  for await (const row of parser) {
+    if (!row[4] || row[4].trim() === "") continue;
+    trackingIdsFound.add(row[4]);
+
+    // Strip time for DateShipped
+    const date = new Date(row[5]);
+    date.setHours(0, 0, 0, 0);
+
+    results.push({
+      apiAccount: apiAccountId,
+      trackingId: row[4],
+      asin: row[2],
+      dateShipped: date,
+      reportStartDate: new Date(reportStartDate),
+      reportEndDate: new Date(reportEndDate),
+      itemsShipped: parseInt(row[7]) || 0,
+      isReturn: row[8] === "1",
+      currency: "USD",
+      conversionRate: rate,
+      adFeesOriginal: parseFloat(row[10]) || 0,
+      adFees: (parseFloat(row[10]) || 0) * rate,
+      revenueOriginal: parseFloat(row[9]) || 0,
+      revenue: (parseFloat(row[9]) || 0) * rate,
+    });
+  }
+
   try {
-    const apiClient = new ApiClient();
-    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
-    apiClient.credentialSecret =
-      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
-    apiClient.version = "2.1";
+    const deleteQuery = {
+      apiAccount: apiAccountId,
+      reportStartDate: new Date(reportStartDate),
+      reportEndDate: new Date(reportEndDate),
+    };
 
-    const api = new DefaultApi(apiClient);
-    console.log(Object.getOwnPropertyNames(Object.getPrototypeOf(api)));
-    const createReportRequest = new GetReportRequestContent();
-    createReportRequest.reportType = "EARNINGS"; // earnings report type
-    createReportRequest.startDate = "2025-01-01"; // adjust dates
-    createReportRequest.endDate = "2025-12-31";
+    const deleted = await SaleDetail.deleteMany(deleteQuery);
+    console.log(`Cleared ${deleted.deletedCount} old records for this range.`);
+    // 1. Efficiently map tracking tags
+    const tags = await TrackingTag.find({
+      tag: { $in: Array.from(trackingIdsFound) },
+      // apiAccount: apiAccountId,
+    });
+    const tagMap = new Map(tags.map((t) => [t.tag, t._id]));
 
-    const response = await api.createReport(
-      "www.amazon.com",
-      createReportRequest,
-    );
+    // 2. Attach tag IDs to results
+    const finalResults = results.map((item) => ({
+      ...item,
+      trackingTag: tagMap.get(item.trackingId) || null,
+    }));
 
-    // Save the reportId — you need it in Step 2
-    res.json({ success: true, reportId: response.reportId });
+    // 3. Batch insert
+    await SaleDetail.insertMany(finalResults);
+
+    fs.unlinkSync(req.file.path);
+    res.json({ message: `Successfully saved ${finalResults.length} records.` });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("Database Error:", err);
+    if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.status(500).json({ error: "DB Save failed", details: err.message });
   }
 };
 
-export const checkReportStatus = async (req, res) => {
+export const getReports = async (req, res) => {
   try {
-    const { reportId } = req.params;
+    const {
+      startDate,
+      endDate,
+      trackingId,
+      apiAccountId,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-    const apiClient = new ApiClient();
-    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
-    apiClient.credentialSecret =
-      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
-    apiClient.version = "2.1";
+    if (!startDate || !endDate)
+      return res
+        .status(400)
+        .json({ error: "Start date and End date are required." });
 
-    const api = new DefaultApi(apiClient);
-    const response = await api.listReports("www.amazon.com");
+    // ... inside getReports
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
 
-    // Find your specific report
-    const report = response.reports?.find((r) => r.reportId === reportId);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Set to the very end of the day
 
-    if (!report) {
-      return res.json({ success: false, message: "Report not found" });
+    let query = {
+      dateShipped: {
+        $gte: start,
+        $lte: end,
+      },
+    };
+
+    // conver to object id
+
+    if (apiAccountId) {
+      query.apiAccount = new mongoose.Types.ObjectId(apiAccountId);
     }
+    if (trackingId && trackingId !== "all") {
+      // Splits by commas or spaces, removes whitespace, and ignores empty strings
+      const idsArray = trackingId
+        .split(/[,\s]+/)
+        .filter((id) => id.trim() !== "");
+      if (idsArray.length > 0) {
+        query.trackingId = { $in: idsArray };
+      }
+    }
+    // Aggregation pipeline to calculate total ad fees
+    const summary = await SaleDetail.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalAdFees: {
+            $sum: {
+              $cond: [
+                { $gt: [{ $ifNull: ["$adFees", 0] }, 0] },
+                { $ifNull: ["$adFees", 0] },
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { dateShipped: -1 },
+      populate: "trackingTag",
+      lean: true,
+    };
+
+    const result = await SaleDetail.paginate(query, options);
 
     res.json({
-      success: true,
-      status: report.processingStatus, // IN_QUEUE / IN_PROGRESS / DONE
-      reportDocumentId: report.reportDocumentId, // only available when DONE
+      reports: result.docs,
+      totalDocs: result.totalDocs,
+      page: result.page,
+      totalPages: result.totalPages,
+      summary: summary.length > 0 ? summary[0].totalAdFees : 0,
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ error: err.message });
+  }
+};
+// --- CLEAR PERIOD ---
+
+// backend/controllers/reportController.js
+export const clearEarnings = async (req, res) => {
+  try {
+    const { startDate, endDate, apiAccountId, trackingId } = req.body;
+
+    let query = {};
+
+    // 1. Critical: Convert apiAccountId to ObjectId
+    if (apiAccountId) {
+      query.apiAccount = new mongoose.Types.ObjectId(apiAccountId);
+    }
+
+    // 2. Critical: Normalize Dates to cover the full 24-hour range
+    if (startDate || endDate) {
+      query.dateShipped = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        query.dateShipped.$gte = start;
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.dateShipped.$lte = end;
+      }
+    }
+
+    if (trackingId) query.trackingId = trackingId;
+
+    // Safety check
+    if (Object.keys(query).length === 0) {
+      return res.status(400).json({
+        error: "At least one filter is required to prevent mass deletion.",
+      });
+    }
+
+    console.log("DANGER - Executing Clear Query:", JSON.stringify(query));
+
+    const result = await SaleDetail.deleteMany(query);
+
+    res.json({
+      message: `Successfully cleared ${result.deletedCount} records.`,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-export const getReportData = async (req, res) => {
+export const getUserReports = async (req, res) => {
   try {
-    const { reportDocumentId } = req.params;
+    let { startDate, endDate, page = 1, limit = 10 } = req.query;
 
-    const apiClient = new ApiClient();
-    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
-    apiClient.credentialSecret =
-      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
-    apiClient.version = "2.1";
+    // 1. Default Date Handler (Last Month)
+    if (!startDate || !endDate) {
+      const now = new Date();
+      const firstDayOfCurrentMonth = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+      );
+      const lastDayOfPrevMonth = new Date(firstDayOfCurrentMonth - 1);
+      const firstDayOfPrevMonth = new Date(
+        lastDayOfPrevMonth.getFullYear(),
+        lastDayOfPrevMonth.getMonth(),
+        1,
+      );
 
-    const api = new DefaultApi(apiClient);
-    const response = await api.getReport("www.amazon.com", {
-      filename: reportDocumentId,
+      startDate = firstDayOfPrevMonth.toISOString();
+      endDate = lastDayOfPrevMonth.toISOString();
+    }
+
+    // --- Date Normalization ---
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Ensure full day coverage
+
+    // 2. Find tags associated with this user
+    const userTags = await TrackingTag.find({ user: req.user._id }).select(
+      "_id tag",
+    );
+    const tagIds = userTags.map((t) => t._id);
+
+    // DEBUG LOGS
+    console.log(`--- User Report Debug [User: ${req.user._id}] ---`);
+    console.log("Found User Tag IDs:", JSON.stringify(tagIds));
+    console.log("Found User Tag Names:", userTags.map((t) => t.tag).join(", "));
+
+    if (tagIds.length === 0) {
+      console.log("Result: No tags found for this user.");
+      return res.json({
+        reports: [],
+        totalDocs: 0,
+        page: 1,
+        totalPages: 0,
+        summary: 0,
+      });
+    }
+
+    // 3. Define query
+    const query = {
+      trackingTag: { $in: tagIds },
+      dateShipped: { $gte: start, $lte: end },
+    };
+
+    console.log("Executing Query:", JSON.stringify(query));
+
+    // 4. Aggregation: Sum ad fees
+    const summary = await SaleDetail.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalAdFees: {
+            $sum: {
+              $cond: [
+                { $gt: [{ $ifNull: ["$adFees", 0] }, 0] },
+                { $ifNull: ["$adFees", 0] },
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    // 5. Pagination
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { dateShipped: -1 },
+      populate: "trackingTag",
+      lean: true,
+    };
+
+    const result = await SaleDetail.paginate(query, options);
+
+    console.log(
+      `Summary Total: $${summary.length > 0 ? summary[0].totalAdFees : 0}`,
+    );
+    console.log(`Table Rows Found: ${result.docs.length}`);
+    console.log("---------------------------------------");
+
+    res.json({
+      reports: result.docs,
+      totalDocs: result.totalDocs,
+      page: result.page,
+      totalPages: result.totalPages,
+      summary: summary.length > 0 ? summary[0].totalAdFees : 0,
     });
-
-    res.json({ success: true, data: response });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-};
-
-export const listReports = async (req, res) => {
-  try {
-    const apiClient = new ApiClient();
-    apiClient.credentialId = "1fnd8mk4at0llr4u2tp5pemihe";
-    apiClient.credentialSecret =
-      "5emtfpt1vq8cdj2s1uvm389q8fv1506jlqouqqriepmd81ehj47";
-    apiClient.version = "2.1";
-    const api = new DefaultApi(apiClient);
-    const response = await api.listReports("www.amazon.com");
-    res.json({ success: true, reports: response.reports });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+  } catch (error) {
+    console.error("Report Controller Error:", error);
+    res.status(500).json({ error: "Could not retrieve your earnings." });
   }
 };

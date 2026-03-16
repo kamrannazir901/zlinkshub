@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { generateLink, getUserLinks } from "../../../services/linkService";
+import Pagination from "../../../components/Pagination"; // Ensure this is imported
 
 const Dashboard = () => {
   const [newlyGenerated, setNewlyGenerated] = useState(null);
@@ -8,6 +9,10 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState("");
   const [copiedId, setCopiedId] = useState(null);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const {
     register,
@@ -17,13 +22,16 @@ const Dashboard = () => {
   } = useForm();
 
   useEffect(() => {
-    fetchHistory();
-  }, []);
+    fetchHistory(page);
+  }, [page]);
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (pageNumber = 1) => {
     try {
-      const res = await getUserLinks();
-      setRecentLinks(res.data || []);
+      const res = await getUserLinks(pageNumber, 10);
+      // Accessing res.data.links as per your new backend structure
+      setRecentLinks(res.data.links || []);
+      setTotalPages(res.data.totalPages || 1);
+      setPage(res.data.page || 1);
     } catch (err) {
       console.error("Failed to load history", err);
     }
@@ -39,7 +47,7 @@ const Dashboard = () => {
 
       setNewlyGenerated(res.data);
       reset();
-      fetchHistory();
+      fetchHistory(1); // Refresh to page 1
     } catch (err) {
       setApiError(err.response?.data?.message || "Amazon API Error.");
     } finally {
@@ -54,7 +62,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-16 min-h-screen">
+    <div className="max-w-2xl mx-auto px-4 py-16 ">
       {/* 1. COMPACT GENERATOR */}
       <section className="mb-8">
         <h1 className="text-2xl font-bold mb-2 text-gray-900">
@@ -63,7 +71,6 @@ const Dashboard = () => {
         <p className="text-sm text-gray-500 mb-6">
           Convert Amazon URLs to branded pages.
         </p>
-
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <input
             {...register("amazonUrl", { required: true })}
@@ -123,12 +130,10 @@ const Dashboard = () => {
             <div className="relative flex items-center">
               <input
                 readOnly
-                // CHANGED: From newlyGenerated.amazonUrl to newlyGenerated.affiliateUrl
                 value={newlyGenerated.affiliateUrl}
                 className="w-full bg-white p-2 pr-32 rounded-xl text-sm font-mono text-gray-600 outline-none border border-transparent focus:border-[#FF9900] transition-all"
               />
               <button
-                // CHANGED: From newlyGenerated.amazonUrl to newlyGenerated.affiliateUrl
                 onClick={() =>
                   handleCopy(newlyGenerated.affiliateUrl, "amazon")
                 }
@@ -150,7 +155,7 @@ const Dashboard = () => {
             Recent Activity
           </h3>
           <button
-            onClick={fetchHistory}
+            onClick={() => fetchHistory(page)}
             className="text-sm text-gray-400 hover:text-black"
           >
             REFRESH
@@ -200,6 +205,15 @@ const Dashboard = () => {
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Pagination added to the bottom of the section */}
+        <div className="mt-8">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
         </div>
       </section>
     </div>

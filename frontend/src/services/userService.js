@@ -1,6 +1,7 @@
 import API from "./api";
 
-export const getUsers = () => API.get("/users");
+export const getUsers = (page = 1, limit = 20, search = "") =>
+  API.get(`/users?page=${page}&limit=${limit}&search=${search}`);
 
 // Renamed to match the call in the Form (getUserById)
 export const getUserById = (id) => API.get(`/users/${id}`);

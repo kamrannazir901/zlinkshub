@@ -20,9 +20,12 @@ const AddTrackingTag = () => {
     const fetchAccounts = async () => {
       try {
         const res = await getAllAPIAccounts();
-        setApiAccounts(res.data);
+        // Defensive check: extract array from potential nested response (res.data.accounts or res.data)
+        const data = res.data.accounts || res.data;
+        setApiAccounts(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Failed to fetch API accounts:", err);
+        setApiAccounts([]);
       }
     };
     fetchAccounts();
@@ -32,10 +35,7 @@ const AddTrackingTag = () => {
     try {
       setLoading(true);
       setApiError("");
-
-      // Logic moved to controller: Just send tag and apiAccountId
       await createTag(data);
-
       navigate("/admin/tracking-tags");
     } catch (err) {
       setApiError(
@@ -63,7 +63,6 @@ const AddTrackingTag = () => {
       )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Store Tag */}
         <div>
           <label className="block text-sm font-semibold text-black mb-1">
             Tag
@@ -81,7 +80,6 @@ const AddTrackingTag = () => {
           )}
         </div>
 
-        {/* API Account Selection */}
         <div>
           <label className="block text-sm font-semibold text-black mb-1">
             API Account
@@ -97,11 +95,13 @@ const AddTrackingTag = () => {
             }`}
           >
             <option value="">Select API Credentials</option>
-            {apiAccounts.map((acc) => (
-              <option key={acc._id} value={acc._id}>
-                {acc.appName} ({acc.marketplace})
-              </option>
-            ))}
+            {/* Defensive rendering ensures we only map if apiAccounts is an array */}
+            {Array.isArray(apiAccounts) &&
+              apiAccounts.map((acc) => (
+                <option key={acc._id} value={acc._id}>
+                  {acc.appName} ({acc.marketplace})
+                </option>
+              ))}
           </select>
           {errors.apiAccountId && (
             <p className="text-red-500 text-xs mt-1">
@@ -110,7 +110,6 @@ const AddTrackingTag = () => {
           )}
         </div>
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={loading}

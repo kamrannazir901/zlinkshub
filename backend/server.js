@@ -38,12 +38,12 @@ app.use(express.static(distPath, { index: false }));
 
 // ✅ 2. API routes SECOND — these start with /api so no conflict
 app.use("/api/auth", authRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/api/affiliate-accounts", affiliateAPIRoutes);
 app.use("/api/tracking-tags", trackingTagRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/links", linkRoutes);
 app.use("/api/guides", guideRoutes);
-app.use("/api/reports", reportRoutes);
 
 // ─────────────────────────────────────────────
 // HELPER

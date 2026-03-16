@@ -62,6 +62,40 @@ export const getAllAPIAccounts = async (req, res) => {
   }
 };
 
+export const getAPIAccountsPaginated = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = "" } = req.query;
+
+    // Targeted search for appName and applicationId
+    const query = search
+      ? {
+          $or: [
+            { appName: { $regex: new RegExp(search, "i") } },
+            { applicationId: { $regex: new RegExp(search, "i") } },
+          ],
+        }
+      : {};
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      lean: true,
+    };
+
+    const result = await AffiliateAPIAccount.paginate(query, options);
+
+    res.json({
+      accounts: result.docs,
+      totalDocs: result.totalDocs,
+      page: result.page,
+      totalPages: result.totalPages,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const deleteAPIAccount = async (req, res) => {
   try {
     const { id } = req.params;

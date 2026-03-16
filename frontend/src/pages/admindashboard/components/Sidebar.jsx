@@ -10,6 +10,7 @@ import {
   Tag,
   Globe,
   BookOpen,
+  BarChart,
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -44,6 +45,11 @@ const Sidebar = () => {
       to: "/admin/tracking-tags",
       label: "Tracking Tags",
       icon: <Tag size={18} strokeWidth={2} />,
+    },
+    {
+      to: "/admin/reports",
+      label: "Reports",
+      icon: <BarChart size={18} strokeWidth={2} />,
     },
     // Guides moved to the end of the list
     {

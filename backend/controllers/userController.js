@@ -42,21 +42,41 @@ export const createUser = async (req, res) => {
 // GET ALL USERS (Optimized to 2 queries total)
 export const getUsers = async (req, res) => {
   try {
-    const users = await User.find().lean();
-    const userIds = users.map((u) => u._id);
+    const { page = 1, limit = 10, search = "" } = req.query;
 
-    // Fetch ALL tags for these users in ONE go
+    // Create query object for search
+    const query = search
+      ? {
+          $or: [
+            { name: { $regex: new RegExp(search, "i") } },
+            { email: { $regex: new RegExp(search, "i") } },
+          ],
+        }
+      : {};
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      lean: true,
+    };
+    const userResult = await User.paginate(query, options);
+
+    const userIds = userResult.docs.map((u) => u._id);
     const allTags = await TrackingTag.find({ user: { $in: userIds } }).lean();
 
-    // Map tags back to users in memory
-    const usersWithTags = users.map((user) => ({
+    const usersWithTags = userResult.docs.map((user) => ({
       ...user,
       tags: allTags.filter(
-        (tag) => tag.user.toString() === user._id.toString(),
+        (tag) => tag.user?.toString() === user._id.toString(),
       ),
     }));
 
-    res.json(usersWithTags);
+    res.json({
+      usersWithTags,
+      totalDocs: userResult.totalDocs,
+      page: userResult.page,
+      totalPages: userResult.totalPages,
+    });
   } catch (err) {
     res.status(500).json({ message: "Error fetching users" });
   }

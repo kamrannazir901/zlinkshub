@@ -4,11 +4,12 @@ import API from "./api";
  * Public Routes
  */
 
-// Fetch all guides for the library page
-export const fetchAllGuides = (limit = 3) => {
-  const url = limit ? `/guides?limit=${limit}` : "/guides";
-  return API.get(url);
+// Fetch all guides with support for search and pagination
+export const fetchAllGuides = (page = 1, limit = 10, search = "") => {
+  const encodedSearch = encodeURIComponent(search);
+  return API.get(`/guides?page=${page}&limit=${limit}&search=${encodedSearch}`);
 };
+
 // Fetch a single guide by Slug (used for SEO-friendly public pages)
 export const fetchGuideBySlug = (slug) => {
   return API.get(`/guides/${slug}`);

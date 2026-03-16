@@ -9,6 +9,8 @@ export const getAllPublicLinks = (limit = 8) =>
 
 export const generateLink = (data) => API.post("/links/generate", data);
 
-export const getUserLinks = () => API.get("/links");
+export const getUserLinks = (page = 1, limit = 10) => {
+  return API.get(`/links?page=${page}&limit=${limit}`);
+};
 
 export const deleteLink = (id) => API.delete(`/links/${id}`);

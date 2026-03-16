@@ -1,5 +1,6 @@
 import TrackingTag from "../models/TrackingTag.js";
 import AffiliateAPIAccount from "../models/AffiliateAPIAccount.js";
+import User from "../models/User.js"; // Adjust path as needed
 
 // Add Tag (Automatically attaches marketplace)
 export const addTag = async (req, res) => {
@@ -34,17 +35,62 @@ export const addTag = async (req, res) => {
 };
 
 // List all tags
+
 export const getAllTags = async (req, res) => {
   try {
-    const tags = await TrackingTag.find()
-      .populate("user", "name email")
-      .populate("apiAccount", "appName"); // Simplified population
-    res.json(tags);
+    const { page = 1, limit = 10, search = "" } = req.query;
+
+    let query = {};
+
+    if (search) {
+      // 1. Find matching User IDs and API Account IDs first
+      // This maps your search term to existing records in related collections
+      const users = await User.find({
+        name: { $regex: search, $options: "i" },
+      }).select("_id");
+
+      const accounts = await AffiliateAPIAccount.find({
+        appName: { $regex: search, $options: "i" },
+      }).select("_id");
+
+      const userIds = users.map((u) => u._id);
+      const accountIds = accounts.map((a) => a._id);
+
+      // 2. Query based on Tag name OR any matching IDs found above
+      query = {
+        $or: [
+          { tag: { $regex: new RegExp(search, "i") } },
+          { user: { $in: userIds } },
+          { apiAccount: { $in: accountIds } },
+        ],
+      };
+    }
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      populate: [
+        { path: "user", select: "name email" },
+        { path: "apiAccount", select: "appName" },
+      ],
+      lean: true, // Returns plain JS objects for better performance
+    };
+
+    const result = await TrackingTag.paginate(query, options);
+
+    res.json({
+      tags: result.docs,
+      totalDocs: result.totalDocs,
+      page: result.page,
+      totalPages: result.totalPages,
+    });
   } catch (error) {
+    // Check your server console for the specific error details
+    console.error("Pagination Search Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
-
 // Get single tag
 export const getTagById = async (req, res) => {
   try {

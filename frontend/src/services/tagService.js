@@ -1,8 +1,10 @@
 import API from "./api";
 
 // Fetch all tags for the Admin list
-export const getTags = () => API.get("/tracking-tags");
-
+export const getTags = (page = 1, limit = 10, search = "") =>
+  API.get(
+    `/tracking-tags?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}`,
+  );
 // Fetch a single tag by ID
 export const getTagById = (id) => API.get(`/tracking-tags/${id}`);
 

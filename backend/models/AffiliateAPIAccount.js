@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongoosePaginate from "mongoose-paginate-v2";
 
 const affiliateAPIAccountSchema = new mongoose.Schema(
   {
@@ -31,5 +32,5 @@ const affiliateAPIAccountSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
+affiliateAPIAccountSchema.plugin(mongoosePaginate);
 export default mongoose.model("AffiliateAPIAccount", affiliateAPIAccountSchema);

@@ -300,12 +300,34 @@ export const generateLink = async (req, res) => {
 
 export const getUserLinks = async (req, res) => {
   try {
-    // If admin, they might want to see all, but usually creators see their own
+    const { page = 1, limit = 10 } = req.query;
+
+    // 1. Define query: Admin sees all, Creators see only their own
     const query = req.user.role === "admin" ? {} : { userId: req.user._id };
 
-    const links = await Link.find(query).sort({ createdAt: -1 }).limit(5);
-    res.json(links);
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+      populate:
+        req.user.role === "admin"
+          ? { path: "userId", select: "name email" }
+          : "",
+      lean: true,
+    };
+
+    // 2. Execute pagination
+    const result = await Link.paginate(query, options);
+
+    // 3. Return consistent data structure
+    res.json({
+      links: result.docs,
+      totalDocs: result.totalDocs,
+      page: result.page,
+      totalPages: result.totalPages,
+    });
   } catch (error) {
+    console.error("Link Pagination Error:", error);
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };

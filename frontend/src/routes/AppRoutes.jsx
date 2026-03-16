@@ -15,7 +15,6 @@ import Home from "../pages/frontend/pages/Home";
 import About from "../pages/frontend/pages/About";
 import Contact from "../pages/frontend/pages/Contact";
 import Login from "../pages/frontend/pages/Login";
-import Signup from "../pages/frontend/pages/Signup";
 import ForgotPassword from "../pages/frontend/pages/ForgotPassword";
 import ResetPassword from "../pages/frontend/pages/ResetPassword";
 import Disclaimer from "../pages/frontend/pages/Disclaimer";
@@ -43,8 +42,10 @@ import AddTrackingTag from "../pages/admindashboard/pages/AddTrackingTag";
 import UserForm from "../pages/admindashboard/pages/UserForm";
 import AdminGuides from "../pages/admindashboard/pages/AdminGuides";
 import GuideForm from "../pages/admindashboard/pages/GuideForm";
+import ReportsPage from "../pages/admindashboard/pages/ReportsPage";
 // User Dashboard Pages
 import UserDashboard from "../pages/userdashboard/pages/Dashboard";
+import MyEarnings from "../pages/userdashboard/pages/MyEarnings";
 import ScrollToTop from "../components/ScrollToTop";
 
 const AppRoutes = () => {
@@ -61,7 +62,7 @@ const AppRoutes = () => {
 
           {/* Auth Pages */}
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="reset-password/:token" element={<ResetPassword />} />
 
@@ -82,6 +83,7 @@ const AppRoutes = () => {
         <Route element={<ProtectedRoute allowedRoles={["user", "admin"]} />}>
           <Route path="/dashboard" element={<UserLayout />}>
             <Route index element={<UserDashboard />} />
+            <Route path="my-earnings" element={<MyEarnings />} />
           </Route>
         </Route>
 
@@ -101,6 +103,8 @@ const AppRoutes = () => {
             <Route path="guides" element={<AdminGuides />} />
             <Route path="guides/new" element={<GuideForm />} />
             <Route path="guides/:id" element={<GuideForm />} />
+
+            <Route path="reports" element={<ReportsPage />} />
           </Route>
         </Route>
 

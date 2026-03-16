@@ -1,16 +1,46 @@
 import express from "express";
+import multer from "multer";
 import {
-  createReport,
-  checkReportStatus,
-  getReportData,
-  listReports,
+  uploadEarningsCSV,
+  clearEarnings,
+  getReports,
+  getUserReports,
 } from "../controllers/reportController.js";
+import { protect, admin } from "../middleware/authMiddleware.js";
+import SaleDetail from "../models/SaleDetail.js";
 
 const router = express.Router();
+const upload = multer({ dest: "uploads/" });
 
-router.post("/create", createReport); // Step 1
-router.get("/status/:reportId", checkReportStatus); // Step 2
-router.get("/data/:reportDocumentId", getReportData); // Step 3
-router.get("/list", listReports); // list all reports
+// These paths will be prefixed by "/api/reports" in app.js
+router.post(
+  "/upload",
+  protect,
+  admin,
+  upload.single("file"),
+  uploadEarningsCSV,
+);
+router.delete("/clear", protect, admin, clearEarnings);
+// --- TESTING UTILITY: Quick clear all ---
+router.delete("/clear-all", protect, admin, async (req, res) => {
+  try {
+    // Clear all records from your main sale collection
+    await SaleDetail.deleteMany({});
+
+    // If you add other collections later, add them here:
+    // await YourOtherModel.deleteMany({});
+
+    res.json({
+      message: "Database cleared: All sale details have been removed.",
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Failed to clear database: " + error.message });
+  }
+});
+router.get("/", protect, getReports);
+
+router.get("/my-earnings", protect, getUserReports);
 
 export default router;

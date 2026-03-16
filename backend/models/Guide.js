@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import mongoosePaginate from "mongoose-paginate-v2";
 
 const guideSchema = new mongoose.Schema(
   {
@@ -11,6 +12,7 @@ const guideSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+guideSchema.plugin(mongoosePaginate);
 
 const Guide = mongoose.model("Guide", guideSchema);
 export default Guide;
