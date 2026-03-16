@@ -54,18 +54,18 @@ const ReportsPage = () => {
   return (
     <div className="p-8 max-w-7xl mx-auto bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+        <h1 className="text-xl md:text-3xl font-bold text-gray-900 ">
           Earnings Reports
         </h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 items-start">
         {/* Summary Card */}
-        <div className="bg-primary p-6 rounded-2xl shadow-xl text-white lg:col-span-1">
-          <p className="text-pink-100 text-[10px] font-black uppercase tracking-widest mb-1">
+        <div className="bg-primary p-6 rounded-2xl shadow-lg text-white">
+          <p className="text-pink-100 text-xs font-bold uppercase">
             Total Ad Fees
           </p>
-          <h3 className="text-4xl font-black">${summary.toFixed(2)}</h3>
+          <h3 className="text-3xl font-bold">${summary.toFixed(2)}</h3>
         </div>
 
         {/* Conditional Upload Card */}
@@ -145,6 +145,7 @@ const ReportsPage = () => {
                 <th className="px-6 py-4">Tracking ID</th>
                 <th className="px-6 py-4">ASIN</th>
                 <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4 text-right">Revenue</th>
                 <th className="px-6 py-4 text-right">Ad Fees</th>
               </tr>
             </thead>
@@ -161,6 +162,9 @@ const ReportsPage = () => {
                     <td className="px-6 py-4 text-gray-500">{s.asin}</td>
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(s.dateShipped).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-right font-bold text-pink-600">
+                      {(s.revenue || 0).toFixed(2)}
                     </td>
                     <td className="px-6 py-4 text-right font-bold text-pink-600">
                       {(s.adFees || 0).toFixed(2)}

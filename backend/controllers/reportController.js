@@ -8,8 +8,13 @@ import mongoose from "mongoose";
 export const uploadEarningsCSV = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-  const { apiAccountId, reportStartDate, reportEndDate, conversionRate } =
-    req.body;
+  const {
+    apiAccountId,
+    reportStartDate,
+    reportEndDate,
+    conversionRate,
+    currency,
+  } = req.body;
   const rate = parseFloat(conversionRate) || 1;
   const results = [];
   const trackingIdsFound = new Set();
@@ -40,7 +45,7 @@ export const uploadEarningsCSV = async (req, res) => {
       reportEndDate: new Date(reportEndDate),
       itemsShipped: parseInt(row[7]) || 0,
       isReturn: row[8] === "1",
-      currency: "USD",
+      currency: currency || "USD",
       conversionRate: rate,
       adFeesOriginal: parseFloat(row[10]) || 0,
       adFees: (parseFloat(row[10]) || 0) * rate,
