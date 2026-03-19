@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    payoutPercentage: { type: Number, default: 100 },
     role: {
       type: String,
       enum: ["admin", "user"],

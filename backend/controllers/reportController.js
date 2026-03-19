@@ -8,14 +8,12 @@ import mongoose from "mongoose";
 export const uploadEarningsCSV = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-  const {
-    apiAccountId,
-    reportStartDate,
-    reportEndDate,
-    conversionRate,
-    currency,
-  } = req.body;
+  const { apiAccountId, year, month, conversionRate, currency } = req.body;
+
   const rate = parseFloat(conversionRate) || 1;
+  const targetYear = parseInt(year);
+  const targetMonth = parseInt(month);
+
   const results = [];
   const trackingIdsFound = new Set();
 
@@ -24,65 +22,86 @@ export const uploadEarningsCSV = async (req, res) => {
       skip_empty_lines: true,
       relax_column_count: true,
       relax_quotes: true,
-      from_line: 3, // Skips header and metadata
+      from_line: 2, // Adjust if your CSV has 1 or 2 header lines
     }),
   );
 
   for await (const row of parser) {
-    if (!row[4] || row[4].trim() === "") continue;
-    trackingIdsFound.add(row[4]);
+    // Skip header row or empty tracking IDs (Row[0] is Tracking ID in your new CSV)
+    if (
+      !row[0] ||
+      row[0].trim() === "" ||
+      row[0].toLowerCase().includes("tracking id")
+    )
+      continue;
 
-    // Strip time for DateShipped
-    const date = new Date(row[5]);
-    date.setHours(0, 0, 0, 0);
+    trackingIdsFound.add(row[0].trim());
+
+    // Based on your sample:
+    // row[0]: ID, row[1]: Clicks, row[2]: Ordered, row[4]: Shipped, row[5]: Returned, row[8]: Total Earnings
+    const earningsOriginal = parseFloat(row[8]) || 0;
 
     results.push({
       apiAccount: apiAccountId,
-      trackingId: row[4],
-      asin: row[2],
-      dateShipped: date,
-      reportStartDate: new Date(reportStartDate),
-      reportEndDate: new Date(reportEndDate),
-      itemsShipped: parseInt(row[7]) || 0,
-      isReturn: row[8] === "1",
+      trackingId: row[0].trim(),
+      year: targetYear,
+      month: targetMonth,
+      clicks: parseInt(row[1]) || 0,
+      itemsOrdered: parseInt(row[2]) || 0,
+      itemsShipped: parseInt(row[4]) || 0,
+      itemsReturned: parseInt(row[5]) || 0,
+      adFeesOriginal: earningsOriginal,
+      adFeesUSD: earningsOriginal * rate,
       currency: currency || "USD",
       conversionRate: rate,
-      adFeesOriginal: parseFloat(row[10]) || 0,
-      adFees: (parseFloat(row[10]) || 0) * rate,
-      revenueOriginal: parseFloat(row[9]) || 0,
-      revenue: (parseFloat(row[9]) || 0) * rate,
     });
   }
 
   try {
-    const deleteQuery = {
+    // Clean up existing records for this specific month/year/account to prevent duplicates
+    await SaleDetail.deleteMany({
       apiAccount: apiAccountId,
-      reportStartDate: new Date(reportStartDate),
-      reportEndDate: new Date(reportEndDate),
-    };
+      year: targetYear,
+      month: targetMonth,
+    });
 
-    const deleted = await SaleDetail.deleteMany(deleteQuery);
-    console.log(`Cleared ${deleted.deletedCount} old records for this range.`);
-    // 1. Efficiently map tracking tags
+    // Map Tracking Tags to the results
+
     const tags = await TrackingTag.find({
       tag: { $in: Array.from(trackingIdsFound) },
-      // apiAccount: apiAccountId,
+    }).populate("user"); // This brings in the user's payoutPercentage
+
+    const tagMap = new Map(
+      tags.map((t) => [
+        t.tag,
+        {
+          id: t._id,
+          // If user exists, use their percentage; otherwise default to 100
+          percentage: t.user ? t.user.payoutPercentage : 100,
+        },
+      ]),
+    );
+
+    const finalResults = results.map((item) => {
+      const tagData = tagMap.get(item.trackingId);
+      const appliedPercentage = tagData ? tagData.percentage : 100;
+
+      return {
+        ...item,
+        trackingTag: tagData ? tagData.id : null,
+        appliedPercentage: appliedPercentage,
+        // Calculate the actual payout for the user
+        userPayoutUSD: (item.adFeesUSD * appliedPercentage) / 100,
+      };
     });
-    const tagMap = new Map(tags.map((t) => [t.tag, t._id]));
 
-    // 2. Attach tag IDs to results
-    const finalResults = results.map((item) => ({
-      ...item,
-      trackingTag: tagMap.get(item.trackingId) || null,
-    }));
-
-    // 3. Batch insert
     await SaleDetail.insertMany(finalResults);
 
-    fs.unlinkSync(req.file.path);
-    res.json({ message: `Successfully saved ${finalResults.length} records.` });
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+    res.json({
+      message: `Successfully saved ${finalResults.length} monthly records.`,
+    });
   } catch (err) {
-    console.error("Database Error:", err);
     if (req.file && fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
     res.status(500).json({ error: "DB Save failed", details: err.message });
   }
@@ -91,62 +110,34 @@ export const uploadEarningsCSV = async (req, res) => {
 export const getReports = async (req, res) => {
   try {
     const {
-      startDate,
-      endDate,
+      year,
+      month,
       trackingId,
       apiAccountId,
       page = 1,
       limit = 10,
     } = req.query;
 
-    if (!startDate || !endDate)
-      return res
-        .status(400)
-        .json({ error: "Start date and End date are required." });
-
-    // ... inside getReports
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // Set to the very end of the day
-
-    let query = {
-      dateShipped: {
-        $gte: start,
-        $lte: end,
-      },
-    };
-
-    // conver to object id
-
-    if (apiAccountId) {
+    let query = {};
+    if (year) query.year = parseInt(year);
+    if (month) query.month = parseInt(month);
+    if (apiAccountId)
       query.apiAccount = new mongoose.Types.ObjectId(apiAccountId);
-    }
+
     if (trackingId && trackingId !== "all") {
-      // Splits by commas or spaces, removes whitespace, and ignores empty strings
       const idsArray = trackingId
         .split(/[,\s]+/)
         .filter((id) => id.trim() !== "");
-      if (idsArray.length > 0) {
-        query.trackingId = { $in: idsArray };
-      }
+      if (idsArray.length > 0) query.trackingId = { $in: idsArray };
     }
-    // Aggregation pipeline to calculate total ad fees
+
     const summary = await SaleDetail.aggregate([
       { $match: query },
       {
         $group: {
           _id: null,
-          totalAdFees: {
-            $sum: {
-              $cond: [
-                { $gt: [{ $ifNull: ["$adFees", 0] }, 0] },
-                { $ifNull: ["$adFees", 0] },
-                0,
-              ],
-            },
-          },
+          totalAdFees: { $sum: "$adFeesUSD" }, // Gross from Amazon
+          totalPayable: { $sum: "$userPayoutUSD" }, // Share for users
         },
       },
     ]);
@@ -154,7 +145,7 @@ export const getReports = async (req, res) => {
     const options = {
       page: parseInt(page),
       limit: parseInt(limit),
-      sort: { dateShipped: -1 },
+      sort: { year: -1, month: -1 },
       populate: "trackingTag",
       lean: true,
     };
@@ -164,167 +155,121 @@ export const getReports = async (req, res) => {
     res.json({
       reports: result.docs,
       totalDocs: result.totalDocs,
-      page: result.page,
       totalPages: result.totalPages,
-      summary: summary.length > 0 ? summary[0].totalAdFees : 0,
+      page: result.page,
+      summary: {
+        totalAdFees: summary.length > 0 ? summary[0].totalAdFees : 0,
+        totalPayable: summary.length > 0 ? summary[0].totalPayable : 0,
+      },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-// --- CLEAR PERIOD ---
 
-// backend/controllers/reportController.js
 export const clearEarnings = async (req, res) => {
   try {
-    const { startDate, endDate, apiAccountId, trackingId } = req.body;
+    const { year, month, apiAccountId } = req.body;
 
-    let query = {};
-
-    // 1. Critical: Convert apiAccountId to ObjectId
-    if (apiAccountId) {
-      query.apiAccount = new mongoose.Types.ObjectId(apiAccountId);
+    // 1. Strict Validation
+    if (!apiAccountId || apiAccountId === "all") {
+      return res.status(400).json({ error: "API Account is required." });
+    }
+    if (!year || year === "all") {
+      return res.status(400).json({ error: "Year is required." });
     }
 
-    // 2. Critical: Normalize Dates to cover the full 24-hour range
-    if (startDate || endDate) {
-      query.dateShipped = {};
-      if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        query.dateShipped.$gte = start;
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.dateShipped.$lte = end;
-      }
+    // 2. Build the Query
+    let query = {
+      apiAccount: new mongoose.Types.ObjectId(apiAccountId),
+      year: parseInt(year),
+    };
+
+    // 3. Optional Month Logic
+    if (month && month !== "" && month !== "all") {
+      query.month = parseInt(month);
     }
 
-    if (trackingId) query.trackingId = trackingId;
-
-    // Safety check
-    if (Object.keys(query).length === 0) {
-      return res.status(400).json({
-        error: "At least one filter is required to prevent mass deletion.",
-      });
-    }
-
-    console.log("DANGER - Executing Clear Query:", JSON.stringify(query));
-
+    // 4. Execute Deletion
     const result = await SaleDetail.deleteMany(query);
 
+    // 5. Response
+    const scope = query.month
+      ? `Month ${query.month}/${query.year}`
+      : `the entire year ${query.year}`;
+
     res.json({
-      message: `Successfully cleared ${result.deletedCount} records.`,
+      success: true,
+      message: `Successfully cleared ${result.deletedCount} records for ${scope}.`,
+      count: result.deletedCount,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Cleanup failed", details: err.message });
   }
 };
 
 export const getUserReports = async (req, res) => {
   try {
-    let { startDate, userId, endDate, page = 1, limit = 10 } = req.query;
+    let { year, month, userId, page = 1, limit = 10 } = req.query;
 
     let targetUserId = req.user._id;
-    if (
-      req.user.role === "admin" &&
-      userId &&
-      mongoose.Types.ObjectId.isValid(userId)
-    ) {
+    if (req.user.role === "admin" && userId) {
       targetUserId = new mongoose.Types.ObjectId(userId);
     }
 
-    const targetUserName = await User.findById(targetUserId).select("name");
+    // Default to current year/month if not provided
+    const qYear = year ? parseInt(year) : new Date().getFullYear();
+    const qMonth = month ? parseInt(month) : new Date().getMonth() + 1;
 
-    // 1. Default Date Handler (Last Month)
-    if (!startDate || !endDate) {
-      const now = new Date();
-      const firstDayOfCurrentMonth = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        1,
-      );
-      const lastDayOfPrevMonth = new Date(firstDayOfCurrentMonth - 1);
-      const firstDayOfPrevMonth = new Date(
-        lastDayOfPrevMonth.getFullYear(),
-        lastDayOfPrevMonth.getMonth(),
-        1,
-      );
-
-      startDate = firstDayOfPrevMonth.toISOString();
-      endDate = lastDayOfPrevMonth.toISOString();
-    }
-
-    // --- Date Normalization ---
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999); // Ensure full day coverage
-
-    // 2. Find tags associated with this user
     const userTags = await TrackingTag.find({ user: targetUserId }).select(
-      "_id tag",
+      "_id",
     );
     const tagIds = userTags.map((t) => t._id);
 
-    if (tagIds.length === 0) {
-      return res.json({
-        reports: [],
-        totalDocs: 0,
-        page: 1,
-        totalPages: 0,
-        summary: 0,
-        userName: targetUserName ? targetUserName.name : req.user.name,
-      });
-    }
+    // pass username as well
+    const user = await User.findById(targetUserId).select("name");
+    const userName = user ? user.name : "";
+    if (tagIds.length === 0)
+      return res.json({ reports: [], totalDocs: 0, summary: 0, userName });
 
-    // 3. Define query
     const query = {
       trackingTag: { $in: tagIds },
-      dateShipped: { $gte: start, $lte: end },
+      year: qYear,
+      month: qMonth,
     };
 
-    // 4. Aggregation: Sum ad fees
+    // Change the $group to sum both adFeesUSD and userPayoutUSD
     const summary = await SaleDetail.aggregate([
       { $match: query },
       {
         $group: {
           _id: null,
-          totalAdFees: {
-            $sum: {
-              $cond: [
-                { $gt: [{ $ifNull: ["$adFees", 0] }, 0] },
-                { $ifNull: ["$adFees", 0] },
-                0,
-              ],
-            },
-          },
+          totalAdFees: { $sum: "$adFeesUSD" }, // The 100% Gross Amount
+          totalPayout: { $sum: "$userPayoutUSD" }, // The User's calculated share
         },
       },
     ]);
 
-    // 5. Pagination
-    const options = {
+    const result = await SaleDetail.paginate(query, {
       page: parseInt(page),
       limit: parseInt(limit),
-      sort: { dateShipped: -1 },
+      sort: { year: -1, month: -1 },
       populate: "trackingTag",
       lean: true,
-    };
-
-    const result = await SaleDetail.paginate(query, options);
+    });
 
     res.json({
       reports: result.docs,
+      userName,
       totalDocs: result.totalDocs,
-      page: result.page,
       totalPages: result.totalPages,
-      summary: summary.length > 0 ? summary[0].totalAdFees : 0,
-      userName: targetUserName ? targetUserName.name : req.user.name,
+      page: result.page,
+      summary: {
+        totalAdFees: summary.length > 0 ? summary[0].totalAdFees : 0,
+        totalPayout: summary.length > 0 ? summary[0].totalPayout : 0,
+      },
     });
   } catch (error) {
-    console.error("Report Controller Error:", error);
-    res.status(500).json({ error: "Could not retrieve your earnings." });
+    res.status(500).json({ error: error.message });
   }
 };

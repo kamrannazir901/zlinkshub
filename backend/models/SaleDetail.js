@@ -3,7 +3,6 @@ import mongoosePaginate from "mongoose-paginate-v2";
 
 const saleDetailSchema = new mongoose.Schema(
   {
-    // Link to the specific API Account used for this report
     apiAccount: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AffiliateAPIAccount",
@@ -15,28 +14,36 @@ const saleDetailSchema = new mongoose.Schema(
       default: null,
     },
     trackingId: { type: String, required: true },
-    asin: { type: String, required: true },
-    dateShipped: { type: Date, required: true },
-    reportStartDate: { type: Date, required: true },
-    reportEndDate: { type: Date, required: true },
-    adFees: { type: Number, default: 0 },
+
+    // Monthly Identification
+    year: { type: Number, required: true }, // e.g., 2026
+    month: { type: Number, required: true }, // e.g., 3 for March
+
+    // Performance Metrics
+    clicks: { type: Number, default: 0 },
+    itemsOrdered: { type: Number, default: 0 },
+    itemsShipped: { type: Number, default: 0 },
+    itemsReturned: { type: Number, default: 0 },
+
+    // Earnings
     adFeesOriginal: { type: Number, default: 0 },
-    isReturn: { type: Boolean, default: false },
-    revenue: { type: Number, default: 0 },
-    revenueOriginal: { type: Number, default: 0 },
+    adFeesUSD: { type: Number, default: 0 },
+    userPayoutUSD: { type: Number, default: 0 },
+    appliedPercentage: { type: Number, default: 100 },
+
     currency: { type: String, default: "USD" },
     conversionRate: { type: Number, default: 1 },
-    itemsShipped: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
 
-// Optimized compound index
-saleDetailSchema.index({
-  apiAccount: 1,
-  trackingId: 1,
-  dateShipped: -1,
-});
+// Compound index for fast filtering by year/month
+saleDetailSchema.index({ apiAccount: 1, year: -1, month: -1 });
+
+saleDetailSchema.index(
+  { apiAccount: 1, year: 1, month: 1, trackingId: 1 },
+  { unique: true },
+);
 
 saleDetailSchema.plugin(mongoosePaginate);
 export default mongoose.model("SaleDetail", saleDetailSchema);

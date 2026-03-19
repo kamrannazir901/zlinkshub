@@ -102,6 +102,10 @@ const Users = () => {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray uppercase tracking-wider">
                   Assigned Tags
                 </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray uppercase tracking-wider">
+                  Payout Percentage
+                </th>
+
                 <th className="px-6 py-4 text-right text-xs font-semibold text-gray uppercase tracking-wider">
                   Actions
                 </th>
@@ -138,6 +142,11 @@ const Users = () => {
                         ))}
                       </div>
                     </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-gray">
+                        {user.payoutPercentage ?? 100}%
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-4">
                         {/* Earnings Link */}
@@ -171,7 +180,7 @@ const Users = () => {
               ) : (
                 <tr>
                   <td
-                    colSpan={3}
+                    colSpan={4}
                     className="px-6 py-12 text-center text-gray italic"
                   >
                     No users found.

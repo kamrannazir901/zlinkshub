@@ -3,7 +3,7 @@ import TrackingTag from "../models/TrackingTag.js";
 
 export const createUser = async (req, res) => {
   try {
-    const { name, email, password, role, tags } = req.body;
+    const { name, email, password, role, tags, payoutPercentage } = req.body;
 
     const userExists = await User.findOne({ email });
     if (userExists)
@@ -24,7 +24,13 @@ export const createUser = async (req, res) => {
         .map((t) => t._id);
     }
 
-    const user = await User.create({ name, email, password, role });
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      payoutPercentage: parseFloat(payoutPercentage) || 100,
+    });
 
     if (tagsToAssign.length > 0) {
       await TrackingTag.updateMany(
@@ -99,7 +105,7 @@ export const getUserById = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   try {
-    const { name, email, role, tags } = req.body;
+    const { name, email, role, tags, payoutPercentage } = req.body;
     const userId = req.params.id;
 
     const existingUser = await User.findOne({ email, _id: { $ne: userId } });
@@ -123,7 +129,12 @@ export const updateUser = async (req, res) => {
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { name, email, role },
+      {
+        name,
+        email,
+        role,
+        payoutPercentage: parseFloat(payoutPercentage) || 100,
+      },
       { returnDocument: "after" }, // Modern Mongoose option
     );
 
@@ -140,7 +151,7 @@ export const updateUser = async (req, res) => {
 
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: "Update failed" });
+    res.status(500).json({ message: "Update failed", details: err.message });
   }
 };
 

@@ -17,6 +17,7 @@ const UserForm = () => {
     email: "",
     password: "",
     role: "user",
+    payoutPercentage: 100,
   });
   const [selectedTags, setSelectedTags] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +35,7 @@ const UserForm = () => {
             name: data.name || "",
             email: data.email || "",
             role: data.role || "user",
+            payoutPercentage: data.payoutPercentage || 100,
           });
           setSelectedTags(data.tags || []);
         } catch (err) {
@@ -131,7 +133,7 @@ const UserForm = () => {
           )}
 
           {/* Identity Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="flex flex-col">
               <label className="text-xs font-bold text-black uppercase mb-2 tracking-wider">
                 Full Name
@@ -161,6 +163,29 @@ const UserForm = () => {
                   setFormData({ ...formData, email: e.target.value })
                 }
               />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-xs font-bold text-black uppercase mb-2 tracking-wider">
+                Payout Percentage (%)
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  required
+                  className="w-full border border-gray/30 rounded-md px-4 py-2.5 focus:border-primary outline-none transition text-sm"
+                  placeholder="e.g. 80"
+                  value={formData.payoutPercentage}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      payoutPercentage: e.target.value,
+                    })
+                  }
+                />
+              </div>
             </div>
           </div>
 
