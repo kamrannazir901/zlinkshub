@@ -16,7 +16,3 @@ export const clearAllDatabase = () => API.delete("/reports/clear-all");
 
 export const getMyEarnings = (params) =>
   API.get("/reports/my-earnings", { params });
-
-// Explicit Admin view
-export const getAdminUserEarnings = (userId, params) =>
-  API.get(`/reports/admin-view/${userId}`, { params });

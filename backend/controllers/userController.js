@@ -63,6 +63,7 @@ export const getUsers = async (req, res) => {
     const options = {
       page: parseInt(page),
       limit: parseInt(limit),
+      sort: { _id: -1 },
       lean: true,
     };
     const userResult = await User.paginate(query, options);
